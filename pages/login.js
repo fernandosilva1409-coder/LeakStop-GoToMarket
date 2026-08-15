@@ -41,6 +41,7 @@ export default function Login() {
               placeholder="Palavra-passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
               className="rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none"
             />
+            <Link href="/esqueci-password" className="-mt-2 self-end text-xs text-muted hover:text-brass">Esqueci-me da password</Link>
             {error && <p className="text-sm text-danger-text">{error}</p>}
             <button
               type="submit" disabled={loading}
