@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import Papa from "papaparse";
-import { Plus, X, Pencil, Trash2, Upload } from "lucide-react";
+import { Plus, X, Pencil, Trash2, Upload, Download } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import DashboardNav from "../../components/DashboardNav";
 import { formatMoney } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
+import { downloadCsvTemplate } from "../../lib/csv";
+
+const TEMPLATE_HEADER = ["dish", "category", "price", "prep_time", "ingredient", "qty", "unit"];
+const TEMPLATE_ROWS = [
+  ["Grilled Chicken", "Main Courses", "12.50", "15", "Chicken breast", "200", "g"],
+  ["Grilled Chicken", "Main Courses", "12.50", "15", "Olive oil", "10", "ml"],
+  ["Caesar Salad", "Salads", "8.90", "10", "Lettuce", "150", "g"],
+  ["Caesar Salad", "Salads", "8.90", "10", "Parmesan", "20", "g"],
+];
 
 const EMPTY_FORM = { id: null, name: "", category: "", price: "", prepTime: "", ingredients: [{ name: "", qty: "", unit: "g" }] };
 const INPUT = "rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none";
@@ -188,6 +197,12 @@ export default function MenuPage() {
               className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
             >
               <Upload size={15} /> {t.chooseFile}
+            </button>
+            <button
+              type="button" onClick={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
+              className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
+            >
+              <Download size={15} /> {t.downloadTemplate}
             </button>
             <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
           </div>

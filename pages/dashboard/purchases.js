@@ -1,16 +1,24 @@
-import { useEffect, useState } from "react";
-import { Search, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import Papa from "papaparse";
+import { Search, Pencil, Trash2, Upload, Download } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import DashboardNav from "../../components/DashboardNav";
 import { formatMoney } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
+import { downloadCsvTemplate } from "../../lib/csv";
 
 const PAGE_SIZE = 20;
 const EMPTY_FORM = { id: null, item: "", quantity: "", unit: "g", unitPrice: "", date: "", supplier: "" };
 const INPUT = "rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none";
 const BTN = "rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-40";
+
+const TEMPLATE_HEADER = ["item", "quantity", "unit", "unit_price", "date", "supplier"];
+const TEMPLATE_ROWS = [
+  ["Tomatoes", "10", "kg", "1.20", "2026-08-01", "Central Market"],
+  ["Olive oil", "5", "l", "6.50", "2026-08-02", "Local Supplier"],
+];
 
 export default function PurchasesPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -22,6 +30,8 @@ export default function PurchasesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [csvStatus, setCsvStatus] = useState("");
+  const fileInputRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -95,6 +105,35 @@ export default function PurchasesPage() {
     loadPage(restaurant.id, page, search);
   };
 
+  const handleCsvFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvStatus(t.importing);
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete: async ({ data, errors }) => {
+        if (errors.length) { setCsvStatus(`${t.csvReadError} ${errors[0].message}`); return; }
+        await importCsvRows(data);
+      },
+    });
+  };
+
+  // Expected columns: item, quantity, unit, unit_price, date, supplier — one row per purchase.
+  const importCsvRows = async (csvRows) => {
+    const payload = csvRows
+      .filter((r) => (r.item || "").trim() && r.date)
+      .map((r) => ({
+        restaurant_id: restaurant.id, item: r.item.trim(), quantity: Number(r.quantity) || 0,
+        unit: (r.unit || "g").trim(), unit_price: Number(r.unit_price) || 0, date: r.date,
+        supplier: (r.supplier || "").trim() || null,
+      }));
+    if (payload.length) await supabase.from("purchases").insert(payload);
+    setCsvStatus(t.importedCount(payload.length));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setPage(0);
+    loadPage(restaurant.id, 0, search);
+  };
+
   if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
@@ -105,6 +144,27 @@ export default function PurchasesPage() {
       <DashboardNav lang={lang} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
+
+        <div className="mt-6 rounded-xl border border-dashed border-ink-border2 bg-ink-panel p-5">
+          <p className="font-semibold text-paper">{t.importCsv}</p>
+          <p className="mt-1 font-mono text-[11.5px] text-muted">{t.csvColumns}</p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button" onClick={() => fileInputRef.current.click()}
+              className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
+            >
+              <Upload size={15} /> {t.chooseFile}
+            </button>
+            <button
+              type="button" onClick={() => downloadCsvTemplate("leakstop-purchases-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
+              className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
+            >
+              <Download size={15} /> {t.downloadTemplate}
+            </button>
+            <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
+          </div>
+          {csvStatus && <p className="mt-2 text-sm text-muted">{csvStatus}</p>}
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-ink-border bg-ink-panel p-5">
           <p className="font-semibold text-paper">{form.id ? t.editPurchase : t.newPurchase}</p>
