@@ -16,6 +16,7 @@ export default async function handler(req, res) {
       payment_method_types: ["card"],
       customer_email: customerEmail,
       line_items: [{ price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID, quantity: 1 }],
+      subscription_data: { trial_period_days: 5 },
       metadata: { restaurantId },
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=cancelled`,

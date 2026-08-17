@@ -32,11 +32,15 @@ export default async function handler(req, res) {
     case "checkout.session.completed": {
       const session = event.data.object;
       const restaurantId = session.metadata?.restaurantId;
-      if (restaurantId) {
+      if (restaurantId && session.subscription) {
+        // Read the subscription's real status (e.g. "trialing" when a trial
+        // period is configured) instead of assuming "active" — a hardcoded
+        // value here would be wrong for trials and for cards needing 3DS.
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
         await supabaseAdmin.from("restaurants").update({
           stripe_customer_id: session.customer,
           stripe_subscription_id: session.subscription,
-          subscription_status: "active",
+          subscription_status: subscription.status,
         }).eq("id", restaurantId);
       }
       break;
