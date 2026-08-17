@@ -1,19 +1,22 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, LogOut } from "lucide-react";
+import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, Settings, LogOut } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { getDashCopy } from "../lib/dashboardCopy";
 
-const LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
-  { href: "/dashboard/purchases", label: "Compras", icon: Package },
-  { href: "/dashboard/sales", label: "Vendas", icon: Receipt },
-  { href: "/dashboard/overhead", label: "Overhead", icon: Calculator },
-  { href: "/dashboard/recommendations", label: "Recomendações", icon: Lightbulb },
-];
-
-export default function DashboardNav() {
+export default function DashboardNav({ lang = "pt" }) {
   const router = useRouter();
+  const t = getDashCopy(lang).nav;
+
+  const LINKS = [
+    { href: "/dashboard", label: t.dashboard, icon: LayoutDashboard },
+    { href: "/dashboard/menu", label: t.menu, icon: UtensilsCrossed },
+    { href: "/dashboard/purchases", label: t.purchases, icon: Package },
+    { href: "/dashboard/sales", label: t.sales, icon: Receipt },
+    { href: "/dashboard/overhead", label: t.overhead, icon: Calculator },
+    { href: "/dashboard/recommendations", label: t.recommendations, icon: Lightbulb },
+    { href: "/dashboard/settings", label: t.settings, icon: Settings },
+  ];
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -49,7 +52,7 @@ export default function DashboardNav() {
           className="ml-auto flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3.5 py-4 text-[13.5px] font-semibold text-faint hover:text-paper"
         >
           <LogOut size={16} strokeWidth={2} />
-          Sair
+          {t.logout}
         </button>
       </div>
     </nav>

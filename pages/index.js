@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat, TrendingDown, UtensilsCrossed, Lightbulb, Check } from "lucide-react";
+import { ChefHat, Check, Pencil, Trash2 } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 
 export default function Home() {
@@ -20,10 +20,11 @@ export default function Home() {
     router.push({ pathname: "/", query: { lang: code } }, undefined, { shallow: true });
   };
 
-  const FEATURES = [
-    { icon: TrendingDown, title: t.feat1_title, description: t.feat1_desc },
-    { icon: UtensilsCrossed, title: t.feat2_title, description: t.feat2_desc },
-    { icon: Lightbulb, title: t.feat3_title, description: t.feat3_desc },
+  const TOUR = [
+    { title: t.tour1_title, desc: t.tour1_desc, mockup: <MenuMockup /> },
+    { title: t.tour2_title, desc: t.tour2_desc, mockup: <PurchasesMockup /> },
+    { title: t.tour3_title, desc: t.tour3_desc, mockup: <OverheadMockup /> },
+    { title: t.tour4_title, desc: t.tour4_desc, mockup: <RecommendationsMockup /> },
   ];
 
   const HOW_STEPS = [
@@ -56,9 +57,9 @@ export default function Home() {
             ))}
           </div>
           <nav className="flex items-center gap-4 text-sm">
-            <Link href="/login" className="text-muted hover:text-paper">{t.nav_login}</Link>
+            <Link href={`/login?lang=${lang}`} className="text-muted hover:text-paper">{t.nav_login}</Link>
             <Link
-              href="/signup"
+              href={`/signup?lang=${lang}`}
               className="rounded-lg bg-brass px-4 py-2 font-semibold text-ink-bg hover:bg-brass-light"
             >
               {t.nav_signup}
@@ -76,13 +77,13 @@ export default function Home() {
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/signup"
+            href={`/signup?lang=${lang}`}
             className="w-full rounded-lg bg-brass px-6 py-3 text-center font-semibold text-ink-bg hover:bg-brass-light sm:w-auto"
           >
             {t.hero_cta_primary}
           </Link>
           <Link
-            href="/login"
+            href={`/login?lang=${lang}`}
             className="w-full rounded-lg border border-ink-border2 px-6 py-3 text-center font-semibold text-paper hover:border-brass hover:text-brass sm:w-auto"
           >
             {t.hero_cta_secondary}
@@ -121,14 +122,16 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="grid gap-8 sm:grid-cols-3">
-          {FEATURES.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="rounded-xl border border-ink-border bg-ink-panel p-6">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brass/10 text-brass">
-                <Icon size={20} />
+        <p className="text-center font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.tour_eyebrow}</p>
+        <h2 className="mt-2 text-center text-2xl font-bold text-paper">{t.tour_title}</h2>
+        <div className="mt-12 flex flex-col gap-16">
+          {TOUR.map((item, i) => (
+            <div key={item.title} className={`flex flex-col items-center gap-8 md:flex-row ${i % 2 === 1 ? "md:flex-row-reverse" : ""}`}>
+              <div className="w-full md:w-1/2">{item.mockup}</div>
+              <div className="w-full md:w-1/2">
+                <h3 className="text-xl font-semibold text-paper">{item.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{item.desc}</p>
               </div>
-              <h3 className="mt-4 font-semibold text-paper">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{description}</p>
             </div>
           ))}
         </div>
@@ -137,7 +140,8 @@ export default function Home() {
       <section className="mx-auto max-w-md px-6 py-16 text-center">
         <h2 className="text-2xl font-bold text-paper">{t.pricing_title}</h2>
         <div className="mt-6 rounded-2xl border border-ink-border bg-ink-panel p-8">
-          <p className="font-mono text-4xl font-bold text-paper">
+          <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.pricing_trial}</p>
+          <p className="mt-1 font-mono text-4xl font-bold text-paper">
             49€<span className="text-base font-normal text-muted">{t.pricing_period}</span>
           </p>
           <p className="mt-1 text-sm text-faint">{t.pricing_vat}</p>
@@ -150,7 +154,7 @@ export default function Home() {
             ))}
           </ul>
           <Link
-            href="/signup"
+            href={`/signup?lang=${lang}`}
             className="mt-8 block w-full rounded-lg bg-brass px-6 py-3 text-center font-semibold text-ink-bg hover:bg-brass-light"
           >
             {t.pricing_cta}
@@ -161,8 +165,8 @@ export default function Home() {
       <footer className="border-t border-ink-border py-8 text-center text-sm text-faint">
         <p>{t.footer_tagline}</p>
         <p className="mt-2 flex items-center justify-center gap-4">
-          <Link href="/termos" className="hover:text-paper">{t.footer_terms}</Link>
-          <Link href="/politica-privacidade" className="hover:text-paper">{t.footer_privacy}</Link>
+          <Link href={`/termos?lang=${lang}`} className="hover:text-paper">{t.footer_terms}</Link>
+          <Link href={`/politica-privacidade?lang=${lang}`} className="hover:text-paper">{t.footer_privacy}</Link>
         </p>
       </footer>
     </div>
@@ -180,5 +184,108 @@ function ExampleKpi({ label, value, tone }) {
       <p className="font-mono text-[11px] uppercase tracking-wide text-muted">{label}</p>
       <p className="mt-1.5 font-mono text-xl font-bold text-paper">{value}</p>
     </div>
+  );
+}
+
+function MockupFrame({ children }) {
+  return <div className="rounded-xl border border-ink-border bg-ink-panel p-5">{children}</div>;
+}
+
+function MenuMockup() {
+  return (
+    <MockupFrame>
+      <div
+        className="rounded border border-ink-border2/40 bg-paper p-4 text-ink-bg"
+        style={{
+          backgroundImage: "radial-gradient(circle, #1B1D19 3px, transparent 3px)",
+          backgroundPosition: "top -3px left 0, top -3px left 100%",
+          backgroundSize: "16px 16px",
+          backgroundRepeat: "repeat-x",
+        }}
+      >
+        <div className="flex items-start justify-between gap-2 border-b border-dashed border-ink-border2/60 pb-2">
+          <div>
+            <p className="text-sm font-bold">Bacalhau à Brás</p>
+            <p className="mt-0.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-border2">Peixe</p>
+            <p className="mt-1 font-mono text-xs text-ink-border2">€12.50 · 6 ingredientes</p>
+          </div>
+          <div className="flex shrink-0 gap-1 text-ink-bg/40">
+            <Pencil size={14} />
+            <Trash2 size={14} />
+          </div>
+        </div>
+        <ul className="mt-2 space-y-0.5 font-mono text-[11.5px] text-ink-bg/70">
+          <li>Bacalhau desfiado — 200g</li>
+          <li>Batata palha — 150g</li>
+          <li>Ovos — 3 unit</li>
+        </ul>
+      </div>
+    </MockupFrame>
+  );
+}
+
+function PurchasesMockup() {
+  return (
+    <MockupFrame>
+      <p className="font-mono text-[11px] uppercase tracking-wide text-faint">Bacalhau desfiado</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="rounded-lg border border-ink-border2 bg-ink-bg p-3">
+          <p className="font-mono text-[10px] uppercase text-faint">Comprado</p>
+          <p className="mt-1 font-mono text-lg font-bold text-paper">12kg</p>
+        </div>
+        <div className="rounded-lg border border-ink-border2 bg-ink-bg p-3">
+          <p className="font-mono text-[10px] uppercase text-faint">Vendido (usado)</p>
+          <p className="mt-1 font-mono text-lg font-bold text-paper">9.4kg</p>
+        </div>
+        <div className="rounded-lg border border-danger-border bg-danger-bg p-3">
+          <p className="font-mono text-[10px] uppercase text-danger-text/80">Desperdício</p>
+          <p className="mt-1 font-mono text-lg font-bold text-danger-text">2.6kg</p>
+        </div>
+      </div>
+    </MockupFrame>
+  );
+}
+
+function OverheadMockup() {
+  const rows = [
+    ["Renda / edifício", "800€"],
+    ["Eletricidade", "150€"],
+    ["Mão de obra", "2 400€"],
+  ];
+  return (
+    <MockupFrame>
+      <div className="space-y-2 font-mono text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between text-muted">
+            <span>{label}</span>
+            <span className="text-paper">{value}</span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between border-t border-ink-border pt-2 font-semibold text-brass">
+          <span>Total / prato</span>
+          <span>1.85€</span>
+        </div>
+      </div>
+    </MockupFrame>
+  );
+}
+
+function RecommendationsMockup() {
+  const rows = [
+    ["Bacalhau à Brás", "Estrela", "bg-good/10 text-good"],
+    ["Sopa do dia", "Cavalo de batalha", "bg-brass/10 text-brass"],
+    ["Menu Degustação", "Fraco desempenho", "bg-danger-bg text-danger-text"],
+  ];
+  return (
+    <MockupFrame>
+      <div className="space-y-2.5">
+        {rows.map(([name, label, classes]) => (
+          <div key={name} className="flex items-center justify-between gap-2">
+            <span className="text-sm text-paper">{name}</span>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${classes}`}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </MockupFrame>
   );
 }

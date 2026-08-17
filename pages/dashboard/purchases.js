@@ -4,6 +4,8 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import DashboardNav from "../../components/DashboardNav";
 import { formatMoney } from "../../lib/calculations";
+import { useDetectedLanguage } from "../../lib/landingCopy";
+import { getDashCopy } from "../../lib/dashboardCopy";
 
 const PAGE_SIZE = 20;
 const EMPTY_FORM = { id: null, item: "", quantity: "", unit: "g", unitPrice: "", date: "", supplier: "" };
@@ -20,6 +22,11 @@ export default function PurchasesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  const browserLang = useDetectedLanguage();
+  const lang = restaurant?.language || browserLang;
+  const dash = getDashCopy(lang);
+  const t = dash.purchases;
 
   const loadPage = async (restaurantId, pageIdx, searchTerm) => {
     setLoading(true);
@@ -64,7 +71,7 @@ export default function PurchasesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.item.trim() || !form.date) { setFormError("Item e data são obrigatórios."); return; }
+    if (!form.item.trim() || !form.date) { setFormError(t.itemDateRequired); return; }
     setSaving(true);
     setFormError("");
     const payload = {
@@ -88,22 +95,22 @@ export default function PurchasesPage() {
     loadPage(restaurant.id, page, search);
   };
 
-  if (restaurantLoading) return <p className="p-10 text-muted">A carregar…</p>;
+  if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
   return (
     <div className="min-h-screen bg-ink-bg">
-      <DashboardNav />
+      <DashboardNav lang={lang} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">Compras</h1>
+        <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
 
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-ink-border bg-ink-panel p-5">
-          <p className="font-semibold text-paper">{form.id ? "Editar compra" : "Nova compra"}</p>
+          <p className="font-semibold text-paper">{form.id ? t.editPurchase : t.newPurchase}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <input placeholder="Item" value={form.item} onChange={(e) => setForm({ ...form, item: e.target.value })} required className={`${INPUT} min-w-[140px] flex-[2]`} />
-            <input placeholder="Quantidade" type="number" step="0.001" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className={`${INPUT} w-28`} />
+            <input placeholder={t.item} value={form.item} onChange={(e) => setForm({ ...form, item: e.target.value })} required className={`${INPUT} min-w-[140px] flex-[2]`} />
+            <input placeholder={t.quantity} type="number" step="0.001" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className={`${INPUT} w-28`} />
             <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className={`${INPUT} w-24`}>
               <option value="g">g</option>
               <option value="kg">kg</option>
@@ -111,18 +118,18 @@ export default function PurchasesPage() {
               <option value="l">l</option>
               <option value="unit">unit</option>
             </select>
-            <input placeholder="Preço/unid." type="number" step="0.0001" value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} className={`${INPUT} w-28`} />
+            <input placeholder={t.unitPrice} type="number" step="0.0001" value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: e.target.value })} className={`${INPUT} w-28`} />
             <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required className={`${INPUT} w-40`} />
-            <input placeholder="Fornecedor" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className={`${INPUT} min-w-[140px] flex-1`} />
+            <input placeholder={t.supplier} value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className={`${INPUT} min-w-[140px] flex-1`} />
           </div>
           {formError && <p className="mt-2 text-sm text-danger-text">{formError}</p>}
           <div className="mt-4 flex gap-2">
             <button type="submit" disabled={saving} className="rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60">
-              {saving ? "A guardar…" : form.id ? "Guardar alterações" : "Adicionar compra"}
+              {saving ? dash.common.saving : form.id ? t.saveChanges : t.addPurchase}
             </button>
             {form.id && (
               <button type="button" onClick={resetForm} className="rounded-lg border border-ink-border2 px-4 py-2 text-sm font-medium text-paper hover:border-brass">
-                Cancelar
+                {dash.common.cancel}
               </button>
             )}
           </div>
@@ -132,30 +139,30 @@ export default function PurchasesPage() {
           <div className="relative flex-1">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
-              placeholder="Pesquisar por item ou fornecedor…" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder={t.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)}
               className={`${INPUT} w-full pl-9`}
             />
           </div>
           <button type="submit" className="rounded-lg border border-ink-border2 px-4 py-2 text-sm font-medium text-paper hover:border-brass">
-            Pesquisar
+            {dash.common.search}
           </button>
         </form>
 
         <div className="mt-6 overflow-hidden rounded-xl border border-ink-border bg-ink-panel">
           {loading ? (
-            <p className="p-5 text-sm text-muted">A carregar…</p>
+            <p className="p-5 text-sm text-muted">{dash.common.loading}</p>
           ) : rows.length === 0 ? (
-            <p className="p-5 text-sm text-muted">Sem compras registadas.</p>
+            <p className="p-5 text-sm text-muted">{t.noPurchases}</p>
           ) : (
             <>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-ink-border text-left font-mono text-[11px] uppercase tracking-wide text-faint">
-                    <th className="px-4 py-3">Data</th>
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3">Qtd</th>
-                    <th className="px-4 py-3">Preço/unid.</th>
-                    <th className="px-4 py-3">Fornecedor</th>
+                    <th className="px-4 py-3">{t.colDate}</th>
+                    <th className="px-4 py-3">{t.item}</th>
+                    <th className="px-4 py-3">{t.colQty}</th>
+                    <th className="px-4 py-3">{t.unitPrice}</th>
+                    <th className="px-4 py-3">{t.supplier}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -184,11 +191,11 @@ export default function PurchasesPage() {
 
               <div className="flex items-center gap-3 border-t border-ink-border px-4 py-3">
                 <button type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className={`${BTN} border border-ink-border2 text-paper hover:border-brass`}>
-                  Anterior
+                  {dash.common.previous}
                 </button>
-                <span className="font-mono text-xs text-faint">Página {page + 1} de {totalPages} ({total} registos)</span>
+                <span className="font-mono text-xs text-faint">{t.pageInfo(page + 1, totalPages, total)}</span>
                 <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} className={`${BTN} border border-ink-border2 text-paper hover:border-brass`}>
-                  Seguinte
+                  {dash.common.next}
                 </button>
               </div>
             </>

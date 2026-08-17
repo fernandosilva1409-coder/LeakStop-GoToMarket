@@ -3,6 +3,8 @@ import { Search, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import DashboardNav from "../../components/DashboardNav";
+import { useDetectedLanguage } from "../../lib/landingCopy";
+import { getDashCopy } from "../../lib/dashboardCopy";
 
 const PAGE_SIZE = 20;
 const EMPTY_FORM = { id: null, dishName: "", quantity: "", date: "" };
@@ -19,6 +21,11 @@ export default function SalesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  const browserLang = useDetectedLanguage();
+  const lang = restaurant?.language || browserLang;
+  const dash = getDashCopy(lang);
+  const t = dash.sales;
 
   const loadPage = async (restaurantId, pageIdx, searchTerm) => {
     setLoading(true);
@@ -57,7 +64,7 @@ export default function SalesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.dishName.trim() || !form.date) { setFormError("Prato e data são obrigatórios."); return; }
+    if (!form.dishName.trim() || !form.date) { setFormError(t.dishDateRequired); return; }
     setSaving(true);
     setFormError("");
     const payload = {
@@ -80,32 +87,32 @@ export default function SalesPage() {
     loadPage(restaurant.id, page, search);
   };
 
-  if (restaurantLoading) return <p className="p-10 text-muted">A carregar…</p>;
+  if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
   return (
     <div className="min-h-screen bg-ink-bg">
-      <DashboardNav />
+      <DashboardNav lang={lang} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">Vendas</h1>
+        <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
 
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-ink-border bg-ink-panel p-5">
-          <p className="font-semibold text-paper">{form.id ? "Editar venda" : "Nova venda"}</p>
+          <p className="font-semibold text-paper">{form.id ? t.editSale : t.newSale}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <input placeholder="Nome do prato" value={form.dishName} onChange={(e) => setForm({ ...form, dishName: e.target.value })} required className={`${INPUT} min-w-[160px] flex-[2]`} />
-            <input placeholder="Quantidade" type="number" step="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className={`${INPUT} w-28`} />
+            <input placeholder={t.dishName} value={form.dishName} onChange={(e) => setForm({ ...form, dishName: e.target.value })} required className={`${INPUT} min-w-[160px] flex-[2]`} />
+            <input placeholder={t.colQuantity} type="number" step="1" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} className={`${INPUT} w-28`} />
             <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required className={`${INPUT} w-40`} />
           </div>
           {formError && <p className="mt-2 text-sm text-danger-text">{formError}</p>}
           <div className="mt-4 flex gap-2">
             <button type="submit" disabled={saving} className="rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60">
-              {saving ? "A guardar…" : form.id ? "Guardar alterações" : "Adicionar venda"}
+              {saving ? dash.common.saving : form.id ? t.saveChanges : t.addSale}
             </button>
             {form.id && (
               <button type="button" onClick={resetForm} className="rounded-lg border border-ink-border2 px-4 py-2 text-sm font-medium text-paper hover:border-brass">
-                Cancelar
+                {dash.common.cancel}
               </button>
             )}
           </div>
@@ -114,26 +121,26 @@ export default function SalesPage() {
         <form onSubmit={handleSearchSubmit} className="mt-4 flex gap-2">
           <div className="relative flex-1">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input placeholder="Pesquisar por prato…" value={search} onChange={(e) => setSearch(e.target.value)} className={`${INPUT} w-full pl-9`} />
+            <input placeholder={t.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} className={`${INPUT} w-full pl-9`} />
           </div>
           <button type="submit" className="rounded-lg border border-ink-border2 px-4 py-2 text-sm font-medium text-paper hover:border-brass">
-            Pesquisar
+            {dash.common.search}
           </button>
         </form>
 
         <div className="mt-6 overflow-hidden rounded-xl border border-ink-border bg-ink-panel">
           {loading ? (
-            <p className="p-5 text-sm text-muted">A carregar…</p>
+            <p className="p-5 text-sm text-muted">{dash.common.loading}</p>
           ) : rows.length === 0 ? (
-            <p className="p-5 text-sm text-muted">Sem vendas registadas.</p>
+            <p className="p-5 text-sm text-muted">{t.noSales}</p>
           ) : (
             <>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-ink-border text-left font-mono text-[11px] uppercase tracking-wide text-faint">
-                    <th className="px-4 py-3">Data</th>
-                    <th className="px-4 py-3">Prato</th>
-                    <th className="px-4 py-3">Quantidade</th>
+                    <th className="px-4 py-3">{t.colDate}</th>
+                    <th className="px-4 py-3">{t.colDish}</th>
+                    <th className="px-4 py-3">{t.colQuantity}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -160,11 +167,11 @@ export default function SalesPage() {
 
               <div className="flex items-center gap-3 border-t border-ink-border px-4 py-3">
                 <button type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className={`${BTN} border border-ink-border2 text-paper hover:border-brass`}>
-                  Anterior
+                  {dash.common.previous}
                 </button>
-                <span className="font-mono text-xs text-faint">Página {page + 1} de {totalPages} ({total} registos)</span>
+                <span className="font-mono text-xs text-faint">{t.pageInfo(page + 1, totalPages, total)}</span>
                 <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} className={`${BTN} border border-ink-border2 text-paper hover:border-brass`}>
-                  Seguinte
+                  {dash.common.next}
                 </button>
               </div>
             </>

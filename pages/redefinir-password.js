@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { ChefHat } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { detectLanguage } from "../lib/landingCopy";
+import { getAuthCopy } from "../lib/authCopy";
 
 export default function RedefinirPassword() {
   const router = useRouter();
@@ -10,11 +12,19 @@ export default function RedefinirPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lang, setLang] = useState("pt");
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    setLang(detectLanguage(router.query));
+  }, [router.isReady, router.query]);
+
+  const t = getAuthCopy(lang).resetPassword;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (password !== confirmPassword) { setError("As palavras-passe não coincidem."); return; }
+    if (password !== confirmPassword) { setError(t.mismatch); return; }
     setLoading(true);
     // The recovery link Supabase emails already establishes a temporary
     // session for this browser — updateUser() uses it to set the new password.
@@ -34,14 +44,14 @@ export default function RedefinirPassword() {
           <span className="text-lg font-bold text-paper">LeakStop</span>
         </Link>
         <div className="rounded-2xl border border-ink-border bg-ink-panel p-8">
-          <h1 className="text-xl font-semibold text-paper">Nova palavra-passe</h1>
+          <h1 className="text-xl font-semibold text-paper">{t.title}</h1>
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <input
-              placeholder="Nova palavra-passe" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
+              placeholder={t.newPassword} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6}
               className="rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none"
             />
             <input
-              placeholder="Confirmar palavra-passe" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6}
+              placeholder={t.confirmPassword} type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6}
               className="rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none"
             />
             {error && <p className="text-sm text-danger-text">{error}</p>}
@@ -49,7 +59,7 @@ export default function RedefinirPassword() {
               type="submit" disabled={loading}
               className="mt-2 rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60"
             >
-              {loading ? "A guardar…" : "Guardar nova palavra-passe"}
+              {loading ? t.saving : t.submit}
             </button>
           </form>
         </div>

@@ -2,55 +2,62 @@ import { AlertTriangle, PackageX } from "lucide-react";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useAnalysis } from "../../lib/useAnalysis";
 import { computeRecommendations, formatMoney } from "../../lib/calculations";
+import { useDetectedLanguage } from "../../lib/landingCopy";
+import { getDashCopy } from "../../lib/dashboardCopy";
 import DashboardNav from "../../components/DashboardNav";
 
-const CLASS_LABELS = {
-  star: { label: "Estrela", classes: "bg-good/10 text-good" },
-  plowhorse: { label: "Cavalo de batalha", classes: "bg-brass/10 text-brass" },
-  puzzle: { label: "Enigma", classes: "bg-muted/10 text-muted" },
-  dog: { label: "Fraco desempenho", classes: "bg-danger-bg text-danger-text" },
+const CLASS_TONE = {
+  star: "bg-good/10 text-good",
+  plowhorse: "bg-brass/10 text-brass",
+  puzzle: "bg-muted/10 text-muted",
+  dog: "bg-danger-bg text-danger-text",
 };
 
 export default function RecommendationsPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
   const { analysis, loading } = useAnalysis(restaurant);
 
-  if (restaurantLoading) return <p className="p-10 text-muted">A carregar…</p>;
+  const browserLang = useDetectedLanguage();
+  const lang = restaurant?.language || browserLang;
+  const dash = getDashCopy(lang);
+  const t = dash.recommendations;
+
+  if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   const currency = restaurant.currency || "EUR";
-  const recs = loading || !analysis ? null : computeRecommendations(analysis, currency);
+  const recs = loading || !analysis ? null : computeRecommendations(analysis, currency, lang);
 
   return (
     <div className="min-h-screen bg-ink-bg">
-      <DashboardNav />
+      <DashboardNav lang={lang} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">Recomendações</h1>
+        <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
 
         {loading || !recs ? (
-          <p className="mt-6 text-sm text-muted">A carregar…</p>
+          <p className="mt-6 text-sm text-muted">{dash.common.loading}</p>
         ) : (
           <>
             {recs.matrix.length === 0 && recs.tooSmallCategories.length === 0 && recs.noRecipe.length === 0
               && recs.wasteAlerts.length === 0 && recs.shortageAlerts.length === 0 && (
               <p className="mt-6 text-sm text-muted">
-                Ainda não há dados suficientes — adiciona pratos com receita, compras e vendas para veres recomendações aqui.
+                {t.emptyState}
               </p>
             )}
 
             {recs.matrix.length > 0 && (
               <section className="mt-6">
-                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">Matriz de engenharia de menu</p>
+                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.matrixTitle}</p>
                 <div className="overflow-hidden rounded-xl border border-ink-border bg-ink-panel">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-ink-border text-left font-mono text-[11px] uppercase tracking-wide text-faint">
-                        <th className="px-4 py-3">Prato</th>
-                        <th className="px-4 py-3">Categoria</th>
-                        <th className="px-4 py-3">Vendidos</th>
-                        <th className="px-4 py-3">Margem completa</th>
-                        <th className="px-4 py-3">Classificação</th>
-                        <th className="px-4 py-3">Preço sugerido</th>
+                        <th className="px-4 py-3">{t.colDish}</th>
+                        <th className="px-4 py-3">{t.colCategory}</th>
+                        <th className="px-4 py-3">{t.colSold}</th>
+                        <th className="px-4 py-3">{t.colFullMargin}</th>
+                        <th className="px-4 py-3">{t.colClassification}</th>
+                        <th className="px-4 py-3">{t.colSuggestedPrice}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -61,8 +68,8 @@ export default function RecommendationsPage() {
                           <td className="px-4 py-3 font-mono text-muted">{d.sold}</td>
                           <td className="px-4 py-3 font-mono text-muted">{d.fullMarginPct.toFixed(0)}%</td>
                           <td className="px-4 py-3">
-                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${CLASS_LABELS[d.cls].classes}`}>
-                              {CLASS_LABELS[d.cls].label}
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${CLASS_TONE[d.cls]}`}>
+                              {t.classLabels[d.cls]}
                             </span>
                           </td>
                           <td className="px-4 py-3 font-mono text-muted">{d.suggestedPrice ? formatMoney(d.suggestedPrice, currency) : "—"}</td>
@@ -77,7 +84,7 @@ export default function RecommendationsPage() {
             {recs.wasteAlerts.length > 0 && (
               <section className="mt-8">
                 <p className="mb-2 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">
-                  <AlertTriangle size={14} className="text-danger-text" /> Alertas de desperdício
+                  <AlertTriangle size={14} className="text-danger-text" /> {t.wasteAlerts}
                 </p>
                 <ul className="space-y-2">
                   {recs.wasteAlerts.map((a) => (
@@ -92,7 +99,7 @@ export default function RecommendationsPage() {
             {recs.shortageAlerts.length > 0 && (
               <section className="mt-8">
                 <p className="mb-2 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">
-                  <PackageX size={14} className="text-warn-text" /> Alertas de falta de stock
+                  <PackageX size={14} className="text-warn-text" /> {t.shortageAlerts}
                 </p>
                 <ul className="space-y-2">
                   {recs.shortageAlerts.map((a) => (
@@ -106,13 +113,13 @@ export default function RecommendationsPage() {
 
             {recs.tooSmallCategories.length > 0 && (
               <section className="mt-8">
-                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">Categorias com poucos pratos</p>
+                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.smallCategoriesTitle}</p>
                 <p className="mb-2 text-sm text-muted">
-                  Precisas de pelo menos 3 pratos com receita na mesma categoria para comparar desempenho.
+                  {t.smallCategoriesDesc}
                 </p>
                 <ul className="space-y-1 text-sm text-paper">
                   {recs.tooSmallCategories.map((c) => (
-                    <li key={c.category}>{c.category} — {c.count} prato(s)</li>
+                    <li key={c.category}>{c.category} — {t.dishCount(c.count)}</li>
                   ))}
                 </ul>
               </section>
@@ -120,9 +127,9 @@ export default function RecommendationsPage() {
 
             {recs.noRecipe.length > 0 && (
               <section className="mt-8">
-                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">Pratos sem receita</p>
+                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.noRecipeTitle}</p>
                 <p className="mb-2 text-sm text-muted">
-                  Estes pratos não têm ingredientes associados, por isso não entram no cálculo de custo/margem.
+                  {t.noRecipeDesc}
                 </p>
                 <ul className="space-y-1 text-sm text-paper">
                   {recs.noRecipe.map((d) => (

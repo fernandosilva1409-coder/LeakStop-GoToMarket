@@ -5,6 +5,8 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import DashboardNav from "../../components/DashboardNav";
 import { formatMoney } from "../../lib/calculations";
+import { useDetectedLanguage } from "../../lib/landingCopy";
+import { getDashCopy } from "../../lib/dashboardCopy";
 
 const EMPTY_FORM = { id: null, name: "", category: "", price: "", prepTime: "", ingredients: [{ name: "", qty: "", unit: "g" }] };
 const INPUT = "rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none";
@@ -18,6 +20,11 @@ export default function MenuPage() {
   const [formError, setFormError] = useState("");
   const [csvStatus, setCsvStatus] = useState("");
   const fileInputRef = useRef(null);
+
+  const browserLang = useDetectedLanguage();
+  const lang = restaurant?.language || browserLang;
+  const dash = getDashCopy(lang);
+  const t = dash.menu;
 
   const loadDishes = async (restaurantId) => {
     const [{ data: dishRows }, { data: ingredientRows }] = await Promise.all([
@@ -61,7 +68,7 @@ export default function MenuPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) { setFormError("O nome do prato é obrigatório."); return; }
+    if (!form.name.trim()) { setFormError(t.dishNameRequired); return; }
     setSaving(true);
     setFormError("");
 
@@ -103,11 +110,11 @@ export default function MenuPage() {
   const handleCsvFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvStatus("A importar…");
+    setCsvStatus(t.importing);
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: async ({ data, errors }) => {
-        if (errors.length) { setCsvStatus(`Erro a ler o CSV: ${errors[0].message}`); return; }
+        if (errors.length) { setCsvStatus(`${t.csvReadError} ${errors[0].message}`); return; }
         await importCsvRows(data);
       },
     });
@@ -156,32 +163,31 @@ export default function MenuPage() {
       }
       imported++;
     }
-    setCsvStatus(`${imported} prato(s) importado(s).`);
+    setCsvStatus(t.importedCount(imported));
     if (fileInputRef.current) fileInputRef.current.value = "";
     loadDishes(restaurant.id);
   };
 
-  if (restaurantLoading) return <p className="p-10 text-muted">A carregar…</p>;
+  if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   return (
     <div className="min-h-screen bg-ink-bg">
-      <DashboardNav />
+      <DashboardNav lang={lang} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">Menu</h1>
+        <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
 
         <div className="mt-6 rounded-xl border border-dashed border-ink-border2 bg-ink-panel p-5">
-          <p className="font-semibold text-paper">Importar CSV</p>
+          <p className="font-semibold text-paper">{t.importCsv}</p>
           <p className="mt-1 font-mono text-[11.5px] text-muted">
-            Colunas esperadas: dish, category, price, prep_time, ingredient, qty, unit — uma linha por
-            ingrediente, com os campos do prato repetidos em cada linha. Pratos com o mesmo nome são atualizados.
+            {t.csvColumns}
           </p>
           <div className="mt-3 flex items-center gap-2">
             <button
               type="button" onClick={() => fileInputRef.current.click()}
               className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
             >
-              <Upload size={15} /> Escolher ficheiro
+              <Upload size={15} /> {t.chooseFile}
             </button>
             <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
           </div>
@@ -189,19 +195,19 @@ export default function MenuPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-ink-border bg-ink-panel p-5">
-          <p className="font-semibold text-paper">{form.id ? "Editar prato" : "Novo prato"}</p>
+          <p className="font-semibold text-paper">{form.id ? t.editDish : t.newDish}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <input placeholder="Nome do prato" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className={`${INPUT} min-w-[160px] flex-[2]`} />
-            <input placeholder="Categoria" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${INPUT} min-w-[120px] flex-1`} />
-            <input placeholder="Preço" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={`${INPUT} w-24`} />
-            <input placeholder="Tempo prep. (min)" type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} className={`${INPUT} w-36`} />
+            <input placeholder={t.dishName} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className={`${INPUT} min-w-[160px] flex-[2]`} />
+            <input placeholder={t.category} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${INPUT} min-w-[120px] flex-1`} />
+            <input placeholder={t.price} type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={`${INPUT} w-24`} />
+            <input placeholder={t.prepTime} type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} className={`${INPUT} w-36`} />
           </div>
 
-          <p className="mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-muted">Ingredientes</p>
+          <p className="mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-muted">{t.ingredients}</p>
           {form.ingredients.map((ing, idx) => (
             <div key={idx} className="mb-1.5 flex gap-2">
-              <input placeholder="Ingrediente" value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className={`${INPUT} flex-[2]`} />
-              <input placeholder="Qtd" type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className={`${INPUT} w-24`} />
+              <input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className={`${INPUT} flex-[2]`} />
+              <input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className={`${INPUT} w-24`} />
               <select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className={`${INPUT} w-24`}>
                 <option value="g">g</option>
                 <option value="kg">kg</option>
@@ -215,26 +221,26 @@ export default function MenuPage() {
             </div>
           ))}
           <button type="button" onClick={addIngredientRow} className="mt-1 flex items-center gap-1 text-sm font-semibold text-good hover:text-good/80">
-            <Plus size={14} /> ingrediente
+            <Plus size={14} /> {t.addIngredient}
           </button>
 
           {formError && <p className="mt-2 text-sm text-danger-text">{formError}</p>}
           <div className="mt-4 flex gap-2">
             <button type="submit" disabled={saving} className="rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60">
-              {saving ? "A guardar…" : form.id ? "Guardar alterações" : "Adicionar prato"}
+              {saving ? dash.common.saving : form.id ? t.saveChanges : t.addDish}
             </button>
             {form.id && (
               <button type="button" onClick={resetForm} className="rounded-lg border border-ink-border2 px-4 py-2 text-sm font-medium text-paper hover:border-brass">
-                Cancelar
+                {dash.common.cancel}
               </button>
             )}
           </div>
         </form>
 
         {loading ? (
-          <p className="mt-6 text-sm text-muted">A carregar pratos…</p>
+          <p className="mt-6 text-sm text-muted">{t.loadingDishes}</p>
         ) : dishes.length === 0 ? (
-          <p className="mt-6 text-sm text-muted">Ainda não tens pratos no menu.</p>
+          <p className="mt-6 text-sm text-muted">{t.noDishesYet}</p>
         ) : (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {dishes.map((d) => (
@@ -252,7 +258,7 @@ export default function MenuPage() {
                   <div>
                     <p className="text-sm font-bold">{d.name}</p>
                     <p className="mt-0.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-border2">{d.category || "—"}</p>
-                    <p className="mt-1 font-mono text-xs text-ink-border2">{formatMoney(d.price, restaurant.currency)} · {d.ingredients.length} ingrediente{d.ingredients.length === 1 ? "" : "s"}</p>
+                    <p className="mt-1 font-mono text-xs text-ink-border2">{formatMoney(d.price, restaurant.currency)} · {t.ingredientCount(d.ingredients.length)}</p>
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <button type="button" onClick={() => startEdit(d)} className="rounded p-1 text-ink-bg/60 hover:text-ink-bg">
