@@ -5,6 +5,6 @@
 @tailwind utilities;
 
 body {
-  @apply bg-ink-bg text-paper;
+  @apply bg-surface-bg text-body;
   font-family: "Space Grotesk", sans-serif;
 }

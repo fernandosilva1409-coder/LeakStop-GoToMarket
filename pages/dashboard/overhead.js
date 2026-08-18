@@ -4,7 +4,11 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
-import DashboardNav from "../../components/DashboardNav";
+import PageShell from "../../components/ui/PageShell";
+import Card from "../../components/ui/Card";
+import Field from "../../components/ui/Field";
+import Input from "../../components/ui/Input";
+import Button from "../../components/ui/Button";
 
 const FIELD_KEYS = [
   { key: "kitchen_labor", icon: ChefHat },
@@ -71,66 +75,58 @@ export default function OverheadPage() {
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   return (
-    <div className="min-h-screen bg-ink-bg">
-      <DashboardNav lang={lang} />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
-        <p className="mt-1 text-sm text-muted">{t.subtitle}</p>
+    <PageShell lang={lang} className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
+      <p className="mt-1 text-sm text-muted">{t.subtitle}</p>
 
-        {loading ? (
-          <p className="mt-6 text-sm text-muted">{dash.common.loading}</p>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-ink-border bg-ink-panel p-5">
+      {loading ? (
+        <p className="mt-6 text-sm text-muted">{dash.common.loading}</p>
+      ) : (
+        <Card className="mt-6">
+          <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {FIELD_KEYS.map((f) => (
-                <label key={f.key} className="flex flex-col gap-1.5">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-muted">
-                    <f.icon size={13} /> {t.fields[f.key]}
-                  </span>
-                  <input
+                <Field key={f.key} label={t.fields[f.key]} icon={f.icon}>
+                  <Input
                     type="number" step="0.01" value={values[f.key]}
                     onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
-                    className="rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper focus:border-brass focus:outline-none"
                   />
-                </label>
+                </Field>
               ))}
             </div>
 
             <div className="mt-6">
-              <p className="mb-2 text-sm font-medium text-paper">{t.distributionMethod}</p>
+              <p className="mb-2 text-sm font-medium text-heading">{t.distributionMethod}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button" onClick={() => setMethod("even")}
-                  className={`rounded-lg border p-3.5 text-left ${method === "even" ? "border-brass bg-brass/10" : "border-ink-border2 hover:border-faint"}`}
+                  className={`rounded-xl border p-3.5 text-left transition-colors ${method === "even" ? "border-brass bg-brass/10" : "border-surface-border hover:border-brass/50"}`}
                 >
-                  <p className="text-sm font-semibold text-paper">{t.evenTitle}</p>
+                  <p className="text-sm font-semibold text-heading">{t.evenTitle}</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted">{t.evenDesc}</p>
                 </button>
                 <button
                   type="button" onClick={() => setMethod("prepTime")}
-                  className={`rounded-lg border p-3.5 text-left ${method === "prepTime" ? "border-brass bg-brass/10" : "border-ink-border2 hover:border-faint"}`}
+                  className={`rounded-xl border p-3.5 text-left transition-colors ${method === "prepTime" ? "border-brass bg-brass/10" : "border-surface-border hover:border-brass/50"}`}
                 >
-                  <p className="text-sm font-semibold text-paper">{t.prepTimeTitle}</p>
+                  <p className="text-sm font-semibold text-heading">{t.prepTimeTitle}</p>
                   <p className="mt-1 text-xs leading-relaxed text-muted">{t.prepTimeDesc}</p>
                 </button>
               </div>
             </div>
 
-            <p className="mt-6 font-mono text-lg font-bold text-paper">
+            <p className="mt-6 font-mono text-lg font-bold text-heading">
               {t.monthlyTotal} {monthlyTotal.toFixed(2)} {restaurant.currency}
             </p>
 
             {saveError && <p className="mt-2 text-sm text-danger-text">{saveError}</p>}
             {saved && <p className="mt-2 text-sm text-good">{dash.common.saved}</p>}
-            <button
-              type="submit" disabled={saving}
-              className="mt-4 rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60"
-            >
+            <Button type="submit" disabled={saving} className="mt-4">
               {saving ? dash.common.saving : dash.common.save}
-            </button>
+            </Button>
           </form>
-        )}
-      </div>
-    </div>
+        </Card>
+      )}
+    </PageShell>
   );
 }

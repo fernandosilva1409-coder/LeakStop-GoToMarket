@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { Wallet, Trash2, Percent } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { formatMoney } from "../../lib/calculations";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useAnalysis } from "../../lib/useAnalysis";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
-import DashboardNav from "../../components/DashboardNav";
+import PageShell from "../../components/ui/PageShell";
+import StatCard from "../../components/ui/StatCard";
+import Button from "../../components/ui/Button";
 
 export default function Dashboard() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -68,63 +71,43 @@ export default function Dashboard() {
   const statusLabel = t.home.subscriptionStatusLabels[restaurant?.subscription_status] || restaurant?.subscription_status;
 
   return (
-    <div className="min-h-screen bg-ink-bg">
-      <DashboardNav lang={lang} />
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">{restaurant?.name}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {t.home.subscriptionStatus} <span className="font-medium text-paper">{statusLabel}</span>
-        </p>
+    <PageShell lang={lang}>
+      <h1 className="text-2xl font-bold text-heading">{restaurant?.name}</h1>
+      <p className="mt-1 text-sm text-muted">
+        {t.home.subscriptionStatus} <span className="font-medium text-heading">{statusLabel}</span>
+      </p>
 
-        {!hasSubscription ? (
-          <div className="mt-4">
-            <button
-              onClick={handleSubscribe}
-              disabled={subscribing}
-              className="rounded-lg bg-brass px-5 py-2.5 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60"
-            >
-              {subscribing ? t.home.openingStripe : t.home.subscribeCta}
-            </button>
-            <p className="mt-1.5 text-xs text-faint">{t.home.vatIncluded}</p>
-            {subscribeError && <p className="mt-2 text-sm text-danger-text">{subscribeError}</p>}
-          </div>
-        ) : (
-          <div className="mt-4">
-            <button
-              onClick={handleManageSubscription}
-              disabled={openingPortal}
-              className="rounded-lg border border-ink-border2 px-5 py-2.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass disabled:opacity-60"
-            >
-              {openingPortal ? t.home.opening : t.home.manageSubscription}
-            </button>
-            {portalError && <p className="mt-2 text-sm text-danger-text">{portalError}</p>}
-          </div>
-        )}
+      {!hasSubscription ? (
+        <div className="mt-4">
+          <Button onClick={handleSubscribe} disabled={subscribing}>
+            {subscribing ? t.home.openingStripe : t.home.subscribeCta}
+          </Button>
+          <p className="mt-1.5 text-xs text-muted">{t.home.vatIncluded}</p>
+          {subscribeError && <p className="mt-2 text-sm text-danger-text">{subscribeError}</p>}
+        </div>
+      ) : (
+        <div className="mt-4">
+          <Button variant="secondary" onClick={handleManageSubscription} disabled={openingPortal}>
+            {openingPortal ? t.home.opening : t.home.manageSubscription}
+          </Button>
+          {portalError && <p className="mt-2 text-sm text-danger-text">{portalError}</p>}
+        </div>
+      )}
 
-        {loading || !analysis ? (
-          <p className="mt-8 text-sm text-muted">{t.home.loadingData}</p>
-        ) : (
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <KpiBox label={t.home.totalRevenue} value={formatMoney(analysis.totalRevenue, currency)} />
-            <KpiBox label={t.home.wasteCost} value={formatMoney(analysis.totalWasteCost, currency)} tone="danger" />
-            <KpiBox label={t.home.totalMargin} value={`${analysis.avgFullMarginPct.toFixed(0)}%`} tone={analysis.avgFullMarginPct >= 0 ? "good" : "danger"} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function KpiBox({ label, value, tone = "neutral" }) {
-  const toneClasses = {
-    neutral: "border-ink-border bg-ink-panel",
-    good: "border-good/30 bg-good/5",
-    danger: "border-danger-border bg-danger-bg",
-  }[tone];
-  return (
-    <div className={`rounded-xl border p-5 ${toneClasses}`}>
-      <p className="font-mono text-[11px] uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-1.5 font-mono text-2xl font-bold text-paper">{value}</p>
-    </div>
+      {loading || !analysis ? (
+        <p className="mt-8 text-sm text-muted">{t.home.loadingData}</p>
+      ) : (
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <StatCard icon={Wallet} label={t.home.totalRevenue} value={formatMoney(analysis.totalRevenue, currency)} />
+          <StatCard icon={Trash2} label={t.home.wasteCost} value={formatMoney(analysis.totalWasteCost, currency)} tone="danger" />
+          <StatCard
+            icon={Percent}
+            label={t.home.totalMargin}
+            value={`${analysis.avgFullMarginPct.toFixed(0)}%`}
+            tone={analysis.avgFullMarginPct >= 0 ? "good" : "danger"}
+          />
+        </div>
+      )}
+    </PageShell>
   );
 }

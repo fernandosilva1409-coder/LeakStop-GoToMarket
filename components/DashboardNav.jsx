@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, Settings, LogOut } from "lucide-react";
+import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, Settings, LogOut } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getDashCopy } from "../lib/dashboardCopy";
 
@@ -15,6 +15,7 @@ export default function DashboardNav({ lang = "pt" }) {
     { href: "/dashboard/sales", label: t.sales, icon: Receipt },
     { href: "/dashboard/overhead", label: t.overhead, icon: Calculator },
     { href: "/dashboard/recommendations", label: t.recommendations, icon: Lightbulb },
+    { href: "/dashboard/chat", label: t.chat, icon: MessageCircle },
     { href: "/dashboard/settings", label: t.settings, icon: Settings },
   ];
 
@@ -24,37 +25,43 @@ export default function DashboardNav({ lang = "pt" }) {
   };
 
   return (
-    <nav className="border-b border-ink-border bg-ink-bg">
-      <div className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-4 sm:px-6">
-        <Link href="/dashboard" className="mr-6 flex shrink-0 items-center gap-2 py-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brass text-ink-bg">
-            <ChefHat size={15} strokeWidth={2.2} />
-          </div>
-          <span className="text-sm font-bold text-paper">LeakStop</span>
-        </Link>
+    // Icon-only rail below sm (phones), icon + label sidebar from sm up —
+    // purely responsive, no toggle/collapse state to manage.
+    <nav className="sticky top-3 m-3 flex h-[calc(100vh-1.5rem)] w-14 shrink-0 flex-col rounded-2xl bg-sidebar-bg shadow-soft-lg sm:w-56">
+      <Link href="/dashboard" className="flex shrink-0 items-center justify-center gap-2.5 border-b border-sidebar-border py-4 sm:justify-start sm:px-5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brass-light to-brass text-heading">
+          <ChefHat size={16} strokeWidth={2.2} />
+        </div>
+        <span className="hidden truncate text-sm font-bold text-white sm:inline">LeakStop</span>
+      </Link>
+
+      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3 sm:px-3">
         {LINKS.map(({ href, label, icon: Icon }) => {
           const active = router.pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3.5 py-4 text-[13.5px] font-semibold transition-colors ${
-                active ? "border-brass text-brass" : "border-transparent text-muted hover:text-paper"
+              title={label}
+              className={`flex items-center justify-center gap-3 rounded-xl px-2.5 py-2.5 text-[13.5px] font-semibold transition-colors sm:justify-start sm:px-3 ${
+                active ? "bg-sidebar-active/15 text-sidebar-active" : "text-sidebar-text hover:bg-white/5 hover:text-white"
               }`}
             >
-              <Icon size={16} strokeWidth={2} />
-              {label}
+              <Icon size={18} strokeWidth={2} className="shrink-0" />
+              <span className="hidden truncate sm:inline">{label}</span>
             </Link>
           );
         })}
-        <button
-          onClick={handleLogout}
-          className="ml-auto flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3.5 py-4 text-[13.5px] font-semibold text-faint hover:text-paper"
-        >
-          <LogOut size={16} strokeWidth={2} />
-          {t.logout}
-        </button>
       </div>
+
+      <button
+        onClick={handleLogout}
+        title={t.logout}
+        className="flex shrink-0 items-center justify-center gap-3 border-t border-sidebar-border px-2.5 py-4 text-[13.5px] font-semibold text-sidebar-text/80 hover:text-white sm:justify-start sm:px-3"
+      >
+        <LogOut size={18} strokeWidth={2} className="shrink-0" />
+        <span className="hidden truncate sm:inline">{t.logout}</span>
+      </button>
     </nav>
   );
 }

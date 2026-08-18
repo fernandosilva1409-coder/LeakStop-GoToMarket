@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { detectLanguage } from "../lib/landingCopy";
 import { getAuthCopy } from "../lib/authCopy";
+import AuthLayout from "../components/ui/AuthLayout";
+import Field from "../components/ui/Field";
+import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
 
 export default function Login() {
   const router = useRouter();
@@ -32,39 +35,27 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink-bg px-6">
-      <div className="w-full max-w-sm">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brass text-ink-bg">
-            <ChefHat size={18} strokeWidth={2.2} />
-          </div>
-          <span className="text-lg font-bold text-paper">LeakStop</span>
-        </Link>
-        <div className="rounded-2xl border border-ink-border bg-ink-panel p-8">
-          <h1 className="text-xl font-semibold text-paper">{t.title}</h1>
-          <form onSubmit={handleLogin} className="mt-6 flex flex-col gap-4">
-            <input
-              placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none"
-            />
-            <input
-              placeholder={t.password} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-              className="rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none"
-            />
-            <Link href={`/esqueci-password?lang=${lang}`} className="-mt-2 self-end text-xs text-muted hover:text-brass">{t.forgotPassword}</Link>
-            {error && <p className="text-sm text-danger-text">{error}</p>}
-            <button
-              type="submit" disabled={loading}
-              className="mt-2 rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60"
-            >
-              {loading ? t.loggingIn : t.submit}
-            </button>
-          </form>
-        </div>
+    <AuthLayout
+      title={t.title}
+      footer={
         <p className="mt-6 text-center text-sm text-muted">
-          {t.noAccount} <Link href={`/signup?lang=${lang}`} className="font-medium text-brass hover:text-brass-light">{t.createAccount}</Link>
+          {t.noAccount} <Link href={`/signup?lang=${lang}`} className="font-medium text-brass hover:text-brass-dark">{t.createAccount}</Link>
         </p>
-      </div>
-    </div>
+      }
+    >
+      <form onSubmit={handleLogin} className="mt-6 flex flex-col gap-4">
+        <Field label="Email">
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </Field>
+        <Field label={t.password}>
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </Field>
+        <Link href={`/esqueci-password?lang=${lang}`} className="-mt-2 self-end text-xs text-muted hover:text-brass">{t.forgotPassword}</Link>
+        {error && <p className="text-sm text-danger-text">{error}</p>}
+        <Button type="submit" disabled={loading} className="mt-2">
+          {loading ? t.loggingIn : t.submit}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

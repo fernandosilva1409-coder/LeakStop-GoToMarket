@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import Papa from "papaparse";
-import { Plus, X, Pencil, Trash2, Upload, Download } from "lucide-react";
+import { Plus, X, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
-import DashboardNav from "../../components/DashboardNav";
 import { formatMoney } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import { downloadCsvTemplate } from "../../lib/csv";
+import PageShell from "../../components/ui/PageShell";
+import Card from "../../components/ui/Card";
+import CsvImportPanel from "../../components/ui/CsvImportPanel";
+import Field from "../../components/ui/Field";
+import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
+import Button from "../../components/ui/Button";
 
 const TEMPLATE_HEADER = ["dish", "category", "price", "prep_time", "ingredient", "qty", "unit"];
 const TEMPLATE_ROWS = [
@@ -18,7 +24,6 @@ const TEMPLATE_ROWS = [
 ];
 
 const EMPTY_FORM = { id: null, name: "", category: "", price: "", prepTime: "", ingredients: [{ name: "", qty: "", unit: "g" }] };
-const INPUT = "rounded-lg border border-ink-border2 bg-ink-bg px-3 py-2 text-sm text-paper placeholder:text-faint focus:border-brass focus:outline-none";
 
 export default function MenuPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -181,56 +186,51 @@ export default function MenuPage() {
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   return (
-    <div className="min-h-screen bg-ink-bg">
-      <DashboardNav lang={lang} />
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-paper">{t.title}</h1>
+    <PageShell lang={lang}>
+      <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
 
-        <div className="mt-6 rounded-xl border border-dashed border-ink-border2 bg-ink-panel p-5">
-          <p className="font-semibold text-paper">{t.importCsv}</p>
-          <p className="mt-1 font-mono text-[11.5px] text-muted">
-            {t.csvColumns}
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button" onClick={() => fileInputRef.current.click()}
-              className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
-            >
-              <Upload size={15} /> {t.chooseFile}
-            </button>
-            <button
-              type="button" onClick={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
-              className="flex items-center gap-1.5 rounded-lg border border-ink-border2 px-3 py-1.5 text-sm font-semibold text-paper hover:border-brass hover:text-brass"
-            >
-              <Download size={15} /> {t.downloadTemplate}
-            </button>
-            <input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} className="hidden" />
-          </div>
-          {csvStatus && <p className="mt-2 text-sm text-muted">{csvStatus}</p>}
-        </div>
+      <CsvImportPanel
+        title={t.importCsv}
+        columnsHint={t.csvColumns}
+        chooseFileLabel={t.chooseFile}
+        downloadLabel={t.downloadTemplate}
+        status={csvStatus}
+        fileInputRef={fileInputRef}
+        onFile={handleCsvFile}
+        onDownloadTemplate={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
+      />
 
-        <form onSubmit={handleSubmit} className="mt-6 rounded-xl border border-ink-border bg-ink-panel p-5">
-          <p className="font-semibold text-paper">{form.id ? t.editDish : t.newDish}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input placeholder={t.dishName} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className={`${INPUT} min-w-[160px] flex-[2]`} />
-            <input placeholder={t.category} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${INPUT} min-w-[120px] flex-1`} />
-            <input placeholder={t.price} type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className={`${INPUT} w-24`} />
-            <input placeholder={t.prepTime} type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} className={`${INPUT} w-36`} />
+      <Card className="mt-6">
+        <form onSubmit={handleSubmit}>
+          <p className="font-semibold text-heading">{form.id ? t.editDish : t.newDish}</p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Field label={t.dishName} className="min-w-[160px] flex-[2]">
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            </Field>
+            <Field label={t.category} className="min-w-[120px] flex-1">
+              <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            </Field>
+            <Field label={t.price} className="w-24">
+              <Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+            </Field>
+            <Field label={t.prepTime} className="w-36">
+              <Input type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} />
+            </Field>
           </div>
 
           <p className="mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-muted">{t.ingredients}</p>
           {form.ingredients.map((ing, idx) => (
             <div key={idx} className="mb-1.5 flex gap-2">
-              <input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className={`${INPUT} flex-[2]`} />
-              <input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className={`${INPUT} w-24`} />
-              <select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className={`${INPUT} w-24`}>
+              <Input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className="flex-[2]" />
+              <Input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className="w-24" />
+              <Select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className="w-24">
                 <option value="g">g</option>
                 <option value="kg">kg</option>
                 <option value="ml">ml</option>
                 <option value="l">l</option>
                 <option value="unit">unit</option>
-              </select>
-              <button type="button" onClick={() => removeIngredientRow(idx)} className="rounded-lg px-2 text-danger-text hover:bg-danger-bg">
+              </Select>
+              <button type="button" onClick={() => removeIngredientRow(idx)} className="rounded-xl px-2 text-danger-text hover:bg-danger-bg">
                 <X size={16} />
               </button>
             </div>
@@ -241,61 +241,58 @@ export default function MenuPage() {
 
           {formError && <p className="mt-2 text-sm text-danger-text">{formError}</p>}
           <div className="mt-4 flex gap-2">
-            <button type="submit" disabled={saving} className="rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink-bg hover:bg-brass-light disabled:opacity-60">
+            <Button type="submit" disabled={saving}>
               {saving ? dash.common.saving : form.id ? t.saveChanges : t.addDish}
-            </button>
+            </Button>
             {form.id && (
-              <button type="button" onClick={resetForm} className="rounded-lg border border-ink-border2 px-4 py-2 text-sm font-medium text-paper hover:border-brass">
+              <Button type="button" variant="secondary" onClick={resetForm}>
                 {dash.common.cancel}
-              </button>
+              </Button>
             )}
           </div>
         </form>
+      </Card>
 
-        {loading ? (
-          <p className="mt-6 text-sm text-muted">{t.loadingDishes}</p>
-        ) : dishes.length === 0 ? (
-          <p className="mt-6 text-sm text-muted">{t.noDishesYet}</p>
-        ) : (
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {dishes.map((d) => (
-              <div
-                key={d.id}
-                className="rounded border border-ink-border2/40 bg-paper p-4 text-ink-bg"
-                style={{
-                  backgroundImage: "radial-gradient(circle, #1B1D19 3px, transparent 3px)",
-                  backgroundPosition: "top -3px left 0, top -3px left 100%",
-                  backgroundSize: "16px 16px",
-                  backgroundRepeat: "repeat-x",
-                }}
-              >
-                <div className="flex items-start justify-between gap-2 border-b border-dashed border-ink-border2/60 pb-2">
-                  <div>
-                    <p className="text-sm font-bold">{d.name}</p>
-                    <p className="mt-0.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-border2">{d.category || "—"}</p>
-                    <p className="mt-1 font-mono text-xs text-ink-border2">{formatMoney(d.price, restaurant.currency)} · {t.ingredientCount(d.ingredients.length)}</p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <button type="button" onClick={() => startEdit(d)} className="rounded p-1 text-ink-bg/60 hover:text-ink-bg">
-                      <Pencil size={14} />
-                    </button>
-                    <button type="button" onClick={() => handleDelete(d)} className="rounded p-1 text-danger-fill/80 hover:text-danger-fill">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+      {loading ? (
+        <p className="mt-6 text-sm text-muted">{t.loadingDishes}</p>
+      ) : dishes.length === 0 ? (
+        <p className="mt-6 text-sm text-muted">{t.noDishesYet}</p>
+      ) : (
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {dishes.map((d) => (
+            <Card key={d.id}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-heading">{d.name}</p>
+                  {d.category && (
+                    <span className="mt-1 inline-block rounded-full bg-brass/10 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-brass">
+                      {d.category}
+                    </span>
+                  )}
                 </div>
-                {d.ingredients.length > 0 && (
-                  <ul className="mt-2 space-y-0.5 font-mono text-[11.5px] text-ink-bg/70">
-                    {d.ingredients.map((ing) => (
-                      <li key={ing.id}>{ing.name} — {ing.qty}{ing.unit}</li>
-                    ))}
-                  </ul>
-                )}
+                <div className="flex shrink-0 gap-1">
+                  <button type="button" onClick={() => startEdit(d)} className="rounded-lg p-1 text-muted hover:bg-surface-sunken hover:text-heading">
+                    <Pencil size={14} />
+                  </button>
+                  <button type="button" onClick={() => handleDelete(d)} className="rounded-lg p-1 text-danger-text hover:bg-danger-bg">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+              <p className="mt-2 font-mono text-xs text-muted">
+                {formatMoney(d.price, restaurant.currency)} · {t.ingredientCount(d.ingredients.length)}
+              </p>
+              {d.ingredients.length > 0 && (
+                <ul className="mt-3 space-y-0.5 border-t border-surface-border pt-3 font-mono text-[11.5px] text-muted">
+                  {d.ingredients.map((ing) => (
+                    <li key={ing.id}>{ing.name} — {ing.qty}{ing.unit}</li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </PageShell>
   );
 }
