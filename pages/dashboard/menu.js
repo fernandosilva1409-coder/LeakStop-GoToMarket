@@ -33,6 +33,7 @@ export default function MenuPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [csvStatus, setCsvStatus] = useState("");
+  const [csvProgress, setCsvProgress] = useState(null);
   const fileInputRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -125,6 +126,7 @@ export default function MenuPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setCsvStatus(t.importing);
+    setCsvProgress(null);
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: async ({ data, errors }) => {
@@ -154,8 +156,10 @@ export default function MenuPage() {
     const existingByName = {};
     dishes.forEach((d) => { existingByName[d.name.toLowerCase()] = d; });
 
+    const dishKeys = Object.keys(byDish);
+    setCsvProgress({ current: 0, total: dishKeys.length });
     let imported = 0;
-    for (const key of Object.keys(byDish)) {
+    for (const key of dishKeys) {
       const group = byDish[key];
       const existing = existingByName[key];
       const payload = {
@@ -165,18 +169,23 @@ export default function MenuPage() {
       let dishId;
       if (existing) {
         dishId = existing.id;
-        await supabase.from("dishes").update(payload).eq("id", dishId);
+        const { error: updateError } = await supabase.from("dishes").update(payload).eq("id", dishId);
+        if (updateError) { setCsvProgress(null); setCsvStatus(`${dash.common.csvSaveError} ${updateError.message} (${t.importedCount(imported)})`); loadDishes(restaurant.id); return; }
         await supabase.from("dish_ingredients").delete().eq("dish_id", dishId);
       } else {
-        const { data } = await supabase.from("dishes").insert(payload).select().single();
+        const { data, error: insertError } = await supabase.from("dishes").insert(payload).select().single();
+        if (insertError) { setCsvProgress(null); setCsvStatus(`${dash.common.csvSaveError} ${insertError.message} (${t.importedCount(imported)})`); loadDishes(restaurant.id); return; }
         dishId = data.id;
       }
       if (group.ingredients.length) {
         const ingRows = group.ingredients.map((i) => ({ dish_id: dishId, name: i.name, qty: i.qty, unit: i.unit }));
-        await supabase.from("dish_ingredients").insert(ingRows);
+        const { error: ingError } = await supabase.from("dish_ingredients").insert(ingRows);
+        if (ingError) { setCsvProgress(null); setCsvStatus(`${dash.common.csvSaveError} ${ingError.message} (${t.importedCount(imported)})`); loadDishes(restaurant.id); return; }
       }
       imported++;
+      setCsvProgress({ current: imported, total: dishKeys.length });
     }
+    setCsvProgress(null);
     setCsvStatus(t.importedCount(imported));
     if (fileInputRef.current) fileInputRef.current.value = "";
     loadDishes(restaurant.id);
@@ -195,6 +204,7 @@ export default function MenuPage() {
         chooseFileLabel={t.chooseFile}
         downloadLabel={t.downloadTemplate}
         status={csvStatus}
+        progress={csvProgress}
         fileInputRef={fileInputRef}
         onFile={handleCsvFile}
         onDownloadTemplate={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}

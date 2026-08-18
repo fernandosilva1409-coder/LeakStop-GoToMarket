@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
-import { downloadCsvTemplate } from "../../lib/csv";
+import { downloadCsvTemplate, normalizeCsvDate } from "../../lib/csv";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import CsvImportPanel from "../../components/ui/CsvImportPanel";
@@ -14,6 +14,7 @@ import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 
 const PAGE_SIZE = 20;
+const CSV_BATCH_SIZE = 25;
 const EMPTY_FORM = { id: null, dishName: "", quantity: "", date: "" };
 
 const TEMPLATE_HEADER = ["dish_name", "quantity", "date"];
@@ -33,6 +34,7 @@ export default function SalesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [csvStatus, setCsvStatus] = useState("");
+  const [csvProgress, setCsvProgress] = useState(null);
   const fileInputRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -104,6 +106,7 @@ export default function SalesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setCsvStatus(t.importing);
+    setCsvProgress(null);
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: async ({ data, errors }) => {
@@ -115,14 +118,34 @@ export default function SalesPage() {
 
   // Expected columns: dish_name, quantity, date — one row per sale.
   const importCsvRows = async (csvRows) => {
+    const skipped = [];
     const payload = csvRows
       .filter((r) => (r.dish_name || "").trim() && r.date)
-      .map((r) => ({
-        restaurant_id: restaurant.id, dish_name: r.dish_name.trim(),
-        quantity: Number(r.quantity) || 0, date: r.date,
-      }));
-    if (payload.length) await supabase.from("sales").insert(payload);
-    setCsvStatus(t.importedCount(payload.length));
+      .map((r) => {
+        const date = normalizeCsvDate(r.date);
+        if (!date) skipped.push(r.dish_name);
+        return { restaurant_id: restaurant.id, dish_name: r.dish_name.trim(), quantity: Number(r.quantity) || 0, date };
+      })
+      .filter((r) => r.date);
+
+    setCsvProgress({ current: 0, total: payload.length });
+    let inserted = 0;
+    for (let i = 0; i < payload.length; i += CSV_BATCH_SIZE) {
+      const chunk = payload.slice(i, i + CSV_BATCH_SIZE);
+      const { error } = await supabase.from("sales").insert(chunk);
+      if (error) {
+        setCsvProgress(null);
+        setCsvStatus(`${dash.common.csvSaveError} ${error.message} (${t.importedCount(inserted)})`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setPage(0);
+        loadPage(restaurant.id, 0, search);
+        return;
+      }
+      inserted += chunk.length;
+      setCsvProgress({ current: inserted, total: payload.length });
+    }
+    setCsvProgress(null);
+    setCsvStatus(skipped.length ? `${t.importedCount(inserted)} — ${skipped.length} ${t.skippedBadDate}` : t.importedCount(inserted));
     if (fileInputRef.current) fileInputRef.current.value = "";
     setPage(0);
     loadPage(restaurant.id, 0, search);
@@ -143,6 +166,7 @@ export default function SalesPage() {
         chooseFileLabel={t.chooseFile}
         downloadLabel={t.downloadTemplate}
         status={csvStatus}
+        progress={csvProgress}
         fileInputRef={fileInputRef}
         onFile={handleCsvFile}
         onDownloadTemplate={() => downloadCsvTemplate("leakstop-sales-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}

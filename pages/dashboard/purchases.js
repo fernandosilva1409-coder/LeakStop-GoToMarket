@@ -6,7 +6,7 @@ import { useRestaurant } from "../../lib/useRestaurant";
 import { formatMoney } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
-import { downloadCsvTemplate } from "../../lib/csv";
+import { downloadCsvTemplate, normalizeCsvDate } from "../../lib/csv";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import CsvImportPanel from "../../components/ui/CsvImportPanel";
@@ -16,6 +16,7 @@ import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
 
 const PAGE_SIZE = 20;
+const CSV_BATCH_SIZE = 25;
 const EMPTY_FORM = { id: null, item: "", quantity: "", unit: "g", unitPrice: "", date: "", supplier: "" };
 
 const TEMPLATE_HEADER = ["item", "quantity", "unit", "unit_price", "date", "supplier"];
@@ -35,6 +36,7 @@ export default function PurchasesPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [csvStatus, setCsvStatus] = useState("");
+  const [csvProgress, setCsvProgress] = useState(null);
   const fileInputRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -113,6 +115,7 @@ export default function PurchasesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setCsvStatus(t.importing);
+    setCsvProgress(null);
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: async ({ data, errors }) => {
@@ -124,15 +127,38 @@ export default function PurchasesPage() {
 
   // Expected columns: item, quantity, unit, unit_price, date, supplier — one row per purchase.
   const importCsvRows = async (csvRows) => {
+    const skipped = [];
     const payload = csvRows
       .filter((r) => (r.item || "").trim() && r.date)
-      .map((r) => ({
-        restaurant_id: restaurant.id, item: r.item.trim(), quantity: Number(r.quantity) || 0,
-        unit: (r.unit || "g").trim(), unit_price: Number(r.unit_price) || 0, date: r.date,
-        supplier: (r.supplier || "").trim() || null,
-      }));
-    if (payload.length) await supabase.from("purchases").insert(payload);
-    setCsvStatus(t.importedCount(payload.length));
+      .map((r) => {
+        const date = normalizeCsvDate(r.date);
+        if (!date) skipped.push(r.item);
+        return {
+          restaurant_id: restaurant.id, item: r.item.trim(), quantity: Number(r.quantity) || 0,
+          unit: (r.unit || "g").trim(), unit_price: Number(r.unit_price) || 0, date,
+          supplier: (r.supplier || "").trim() || null,
+        };
+      })
+      .filter((r) => r.date);
+
+    setCsvProgress({ current: 0, total: payload.length });
+    let inserted = 0;
+    for (let i = 0; i < payload.length; i += CSV_BATCH_SIZE) {
+      const chunk = payload.slice(i, i + CSV_BATCH_SIZE);
+      const { error } = await supabase.from("purchases").insert(chunk);
+      if (error) {
+        setCsvProgress(null);
+        setCsvStatus(`${dash.common.csvSaveError} ${error.message} (${t.importedCount(inserted)})`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setPage(0);
+        loadPage(restaurant.id, 0, search);
+        return;
+      }
+      inserted += chunk.length;
+      setCsvProgress({ current: inserted, total: payload.length });
+    }
+    setCsvProgress(null);
+    setCsvStatus(skipped.length ? `${t.importedCount(inserted)} — ${skipped.length} ${t.skippedBadDate}` : t.importedCount(inserted));
     if (fileInputRef.current) fileInputRef.current.value = "";
     setPage(0);
     loadPage(restaurant.id, 0, search);
@@ -153,6 +179,7 @@ export default function PurchasesPage() {
         chooseFileLabel={t.chooseFile}
         downloadLabel={t.downloadTemplate}
         status={csvStatus}
+        progress={csvProgress}
         fileInputRef={fileInputRef}
         onFile={handleCsvFile}
         onDownloadTemplate={() => downloadCsvTemplate("leakstop-purchases-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
