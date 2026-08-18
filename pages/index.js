@@ -70,7 +70,10 @@ export default function Home() {
       </header>
 
       <section className="mx-auto max-w-3xl px-6 pb-16 pt-12 text-center sm:pt-16">
-        <h1 className="text-4xl font-bold tracking-tight text-heading sm:text-5xl">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-brass/10 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-brass">
+          <ChefHat size={13} strokeWidth={2.2} /> {t.hero_eyebrow}
+        </span>
+        <h1 className="mt-4 text-4xl font-bold tracking-tight text-heading sm:text-5xl">
           {t.hero_title}
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-lg text-muted">
