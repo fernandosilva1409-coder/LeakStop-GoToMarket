@@ -69,42 +69,44 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-3xl px-6 pb-16 pt-12 text-center sm:pt-16">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-brass/10 px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-brass">
-          <ChefHat size={13} strokeWidth={2.2} /> {t.hero_eyebrow}
-        </span>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-heading sm:text-5xl">
-          {t.hero_title}
-        </h1>
-        <p className="mx-auto mt-5 max-w-xl text-lg text-muted">
-          {t.hero_subtitle}
-        </p>
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href={`/signup?lang=${lang}`}
-            className="w-full rounded-xl bg-gradient-to-br from-brass-light to-brass px-6 py-3 text-center font-semibold text-heading shadow-soft hover:shadow-soft-md sm:w-auto"
-          >
-            {t.hero_cta_primary}
-          </Link>
-          <Link
-            href={`/login?lang=${lang}`}
-            className="w-full rounded-xl border border-surface-border bg-surface-card px-6 py-3 text-center font-semibold text-heading shadow-soft hover:border-brass hover:text-brass sm:w-auto"
-          >
-            {t.hero_cta_secondary}
-          </Link>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-3xl px-6 pb-16">
-        <p className="text-center font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.example_eyebrow}</p>
-        <h2 className="mt-2 text-center text-2xl font-bold text-heading">{t.example_title}</h2>
-        <div className="mt-6 rounded-2xl bg-surface-card p-5 shadow-soft">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StatCard icon={Wallet} label={t.example_kpi1_label} value="€12,480" tone="neutral" />
-            <StatCard icon={Trash2} label={t.example_kpi2_label} value="€890" tone="danger" />
-            <StatCard icon={Percent} label={t.example_kpi3_label} value="68%" tone="good" />
+      <section className="mx-auto max-w-6xl px-6 pb-20 pt-12 sm:pt-16">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <div className="text-center lg:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-brass-light to-brass px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-wide text-heading shadow-soft">
+              <ChefHat size={15} strokeWidth={2.4} /> {t.hero_eyebrow}
+            </span>
+            <h1 className="mt-6 text-5xl font-bold leading-[1.08] tracking-tight text-heading sm:text-6xl">
+              {t.hero_title}
+            </h1>
+            <p className="mx-auto mt-6 max-w-xl text-xl leading-relaxed text-muted lg:mx-0">
+              {t.hero_subtitle}
+            </p>
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+              <Link
+                href={`/signup?lang=${lang}`}
+                className="w-full rounded-xl bg-gradient-to-br from-brass-light to-brass px-7 py-3.5 text-center text-base font-semibold text-heading shadow-soft-md hover:shadow-soft-lg sm:w-auto"
+              >
+                {t.hero_cta_primary}
+              </Link>
+              <Link
+                href={`/login?lang=${lang}`}
+                className="w-full rounded-xl border border-surface-border bg-surface-card px-7 py-3.5 text-center text-base font-semibold text-heading shadow-soft hover:border-brass hover:text-brass sm:w-auto"
+              >
+                {t.hero_cta_secondary}
+              </Link>
+            </div>
           </div>
-          <p className="mt-4 text-center text-xs text-muted">{t.example_note}</p>
+
+          <div className="rounded-3xl bg-surface-card p-6 shadow-soft-lg">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.example_eyebrow}</p>
+            <p className="mt-1 text-base font-semibold text-heading">{t.example_title}</p>
+            <div className="mt-5 grid grid-cols-1 gap-3">
+              <StatCard icon={Wallet} label={t.example_kpi1_label} value="€12,480" tone="neutral" />
+              <StatCard icon={Trash2} label={t.example_kpi2_label} value="€890" tone="danger" />
+              <StatCard icon={Percent} label={t.example_kpi3_label} value="68%" tone="good" />
+            </div>
+            <p className="mt-4 text-center text-xs text-muted">{t.example_note}</p>
+          </div>
         </div>
       </section>
 
