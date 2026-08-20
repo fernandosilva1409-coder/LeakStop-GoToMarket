@@ -25,9 +25,7 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    const text = input.trim();
+  const sendMessage = async (text) => {
     if (!text || sending || !restaurant) return;
 
     const nextMessages = [...messages, { role: "user", content: text }];
@@ -52,6 +50,11 @@ export default function ChatPage() {
     setSending(false);
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    sendMessage(input.trim());
+  };
+
   if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
@@ -66,7 +69,26 @@ export default function ChatPage() {
 
       <div ref={scrollRef} className="mt-6 flex-1 space-y-3 overflow-y-auto rounded-2xl bg-surface-card p-4 shadow-soft" style={{ minHeight: "50vh", maxHeight: "60vh" }}>
         {messages.length === 0 && !sending && (
-          <p className="flex h-full items-center justify-center text-center text-sm text-muted">{t.emptyState}</p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+            <p className="text-sm text-muted">{t.emptyState}</p>
+            {t.suggestions?.length > 0 && (
+              <div className="w-full max-w-md">
+                <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.suggestionsTitle}</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {t.suggestions.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => sendMessage(q)}
+                      className="rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-medium text-heading shadow-soft transition-colors hover:bg-gradient-to-br hover:from-brass-light hover:to-brass"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -90,7 +112,7 @@ export default function ChatPage() {
 
       {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
 
-      <form onSubmit={handleSend} className="mt-4 flex gap-2">
+      <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
         <Input
           value={input} onChange={(e) => setInput(e.target.value)} placeholder={t.placeholder}
           disabled={sending}
