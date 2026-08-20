@@ -55,6 +55,7 @@ export default async function handler(req, res) {
 
   try {
     let loopMessages = conversation;
+    const toolCallLog = [];
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       const response = await anthropic.messages.create({
         model: CHAT_MODEL,
@@ -66,13 +67,14 @@ export default async function handler(req, res) {
 
       if (response.stop_reason !== "tool_use") {
         const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
-        return res.status(200).json({ reply: text });
+        return res.status(200).json({ reply: text, toolCalls: toolCallLog });
       }
 
       const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
       const toolResults = toolUseBlocks.map((block) => {
         try {
           const output = runChatTool(block.name, block.input, context);
+          toolCallLog.push({ name: block.name, input: block.input, output });
           return { type: "tool_result", tool_use_id: block.id, content: JSON.stringify(output) };
         } catch (err) {
           return { type: "tool_result", tool_use_id: block.id, content: `Error: ${err.message}`, is_error: true };
@@ -85,7 +87,7 @@ export default async function handler(req, res) {
         { role: "user", content: toolResults },
       ];
     }
-    return res.status(200).json({ reply: "" });
+    return res.status(200).json({ reply: "", toolCalls: toolCallLog });
   } catch (err) {
     console.error("Chat error:", err);
     return res.status(500).json({ error: "Could not reach the assistant" });

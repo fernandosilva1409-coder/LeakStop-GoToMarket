@@ -97,6 +97,23 @@ create table overhead_settings (
 );
 
 -- ---------------------------------------------------------------------------
+-- Analytics widgets — snapshots pinned from "Chat with Your Data" answers,
+-- shown on the Analytics page. `data` is the raw tool output at pin time
+-- (not re-queried), so a widget keeps showing what the user pinned even as
+-- the underlying numbers change later.
+-- ---------------------------------------------------------------------------
+create table analytics_widgets (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  title text not null,
+  tool_name text not null,
+  tool_input jsonb not null default '{}'::jsonb,
+  data jsonb not null,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Indexes for the queries the app actually makes
 -- ---------------------------------------------------------------------------
 create index idx_dishes_restaurant on dishes(restaurant_id);
@@ -104,6 +121,7 @@ create index idx_dish_ingredients_dish on dish_ingredients(dish_id);
 create index idx_purchases_restaurant_date on purchases(restaurant_id, date);
 create index idx_sales_restaurant_date on sales(restaurant_id, date);
 create index idx_members_user on restaurant_members(user_id);
+create index idx_analytics_widgets_restaurant on analytics_widgets(restaurant_id);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: a user can only touch rows belonging to a restaurant
@@ -116,6 +134,7 @@ alter table dish_ingredients enable row level security;
 alter table purchases enable row level security;
 alter table sales enable row level security;
 alter table overhead_settings enable row level security;
+alter table analytics_widgets enable row level security;
 
 -- Helper: is the current user a member of a given restaurant?
 create or replace function is_restaurant_member(target_restaurant_id uuid)
@@ -177,6 +196,13 @@ create policy "members can write overhead" on overhead_settings
   for insert with check (is_restaurant_member(restaurant_id));
 create policy "members can update overhead" on overhead_settings
   for update using (is_restaurant_member(restaurant_id));
+
+create policy "members can read analytics widgets" on analytics_widgets
+  for select using (is_restaurant_member(restaurant_id));
+create policy "members can write analytics widgets" on analytics_widgets
+  for insert with check (is_restaurant_member(restaurant_id));
+create policy "members can delete analytics widgets" on analytics_widgets
+  for delete using (is_restaurant_member(restaurant_id));
 
 -- ---------------------------------------------------------------------------
 -- Convenience: when a new restaurant is created, auto-create its owner

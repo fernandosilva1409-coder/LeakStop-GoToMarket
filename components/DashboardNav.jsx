@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, Settings, LogOut } from "lucide-react";
+import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, Settings, LogOut } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getDashCopy } from "../lib/dashboardCopy";
 
@@ -16,6 +16,7 @@ export default function DashboardNav({ lang = "pt" }) {
     { href: "/dashboard/overhead", label: t.overhead, icon: Calculator },
     { href: "/dashboard/recommendations", label: t.recommendations, icon: Lightbulb },
     { href: "/dashboard/chat", label: t.chat, icon: MessageCircle },
+    { href: "/dashboard/analytics", label: t.analytics, icon: BarChart3 },
     { href: "/dashboard/settings", label: t.settings, icon: Settings },
   ];
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Pin, PinOff } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useDetectedLanguage } from "../../lib/landingCopy";
@@ -14,6 +14,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [pinnedIndices, setPinnedIndices] = useState(() => new Set());
   const scrollRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -43,7 +44,7 @@ export default function ChatPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "error");
-      setMessages([...nextMessages, { role: "assistant", content: body.reply || "…" }]);
+      setMessages([...nextMessages, { role: "assistant", content: body.reply || "…", toolCalls: body.toolCalls || [] }]);
     } catch (err) {
       setError(t.errorGeneric);
     }
@@ -53,6 +54,19 @@ export default function ChatPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     sendMessage(input.trim());
+  };
+
+  const handlePin = async (index, toolCalls, question) => {
+    if (!restaurant || !toolCalls?.length || pinnedIndices.has(index)) return;
+    const lastCall = toolCalls[toolCalls.length - 1];
+    const { error: insertError } = await supabase.from("analytics_widgets").insert({
+      restaurant_id: restaurant.id,
+      title: question.slice(0, 200),
+      tool_name: lastCall.name,
+      tool_input: lastCall.input || {},
+      data: lastCall.output,
+    });
+    if (!insertError) setPinnedIndices((prev) => new Set(prev).add(index));
   };
 
   if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
@@ -91,7 +105,7 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
                 m.role === "user" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-heading"
@@ -99,6 +113,19 @@ export default function ChatPage() {
             >
               {m.content}
             </div>
+            {m.role === "assistant" && m.toolCalls?.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handlePin(i, m.toolCalls, messages[i - 1]?.content || m.content)}
+                disabled={pinnedIndices.has(i)}
+                className={`mt-1 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  pinnedIndices.has(i) ? "text-good" : "text-muted hover:bg-surface-sunken hover:text-heading"
+                }`}
+              >
+                {pinnedIndices.has(i) ? <Pin size={12} /> : <PinOff size={12} />}
+                {pinnedIndices.has(i) ? t.pinned : t.pinButton}
+              </button>
+            )}
           </div>
         ))}
         {sending && (
