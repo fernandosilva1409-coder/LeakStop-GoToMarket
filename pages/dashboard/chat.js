@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles, Pin, PinOff } from "lucide-react";
+import { Send, Sparkles, Pin, PinOff, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useDetectedLanguage } from "../../lib/landingCopy";
@@ -11,10 +11,10 @@ import Button from "../../components/ui/Button";
 export default function ChatPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
   const [messages, setMessages] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [pinnedIndices, setPinnedIndices] = useState(() => new Set());
   const scrollRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -23,17 +23,37 @@ export default function ChatPage() {
   const t = dash.chat;
 
   useEffect(() => {
+    if (!restaurant) return;
+    (async () => {
+      const { data } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .order("created_at", { ascending: true });
+      setMessages((data || []).map((m) => ({ id: m.id, role: m.role, content: m.content, toolCalls: m.tool_calls || [], pinned: m.pinned })));
+      setHistoryLoading(false);
+    })();
+  }, [restaurant]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
   const sendMessage = async (text) => {
     if (!text || sending || !restaurant) return;
 
-    const nextMessages = [...messages, { role: "user", content: text }];
-    setMessages(nextMessages);
-    setInput("");
     setSending(true);
     setError("");
+
+    const { data: userRow } = await supabase
+      .from("chat_messages")
+      .insert({ restaurant_id: restaurant.id, role: "user", content: text })
+      .select()
+      .single();
+    const userMessage = { id: userRow?.id, role: "user", content: text };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setInput("");
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -44,7 +64,15 @@ export default function ChatPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "error");
-      setMessages([...nextMessages, { role: "assistant", content: body.reply || "…", toolCalls: body.toolCalls || [] }]);
+
+      const reply = body.reply || "…";
+      const toolCalls = body.toolCalls || [];
+      const { data: assistantRow } = await supabase
+        .from("chat_messages")
+        .insert({ restaurant_id: restaurant.id, role: "assistant", content: reply, tool_calls: toolCalls })
+        .select()
+        .single();
+      setMessages([...nextMessages, { id: assistantRow?.id, role: "assistant", content: reply, toolCalls, pinned: false }]);
     } catch (err) {
       setError(t.errorGeneric);
     }
@@ -56,9 +84,9 @@ export default function ChatPage() {
     sendMessage(input.trim());
   };
 
-  const handlePin = async (index, toolCalls, question) => {
-    if (!restaurant || !toolCalls?.length || pinnedIndices.has(index)) return;
-    const lastCall = toolCalls[toolCalls.length - 1];
+  const handlePin = async (msg, question) => {
+    if (!restaurant || !msg.toolCalls?.length || msg.pinned) return;
+    const lastCall = msg.toolCalls[msg.toolCalls.length - 1];
     const { error: insertError } = await supabase.from("analytics_widgets").insert({
       restaurant_id: restaurant.id,
       title: question.slice(0, 200),
@@ -66,7 +94,15 @@ export default function ChatPage() {
       tool_input: lastCall.input || {},
       data: lastCall.output,
     });
-    if (!insertError) setPinnedIndices((prev) => new Set(prev).add(index));
+    if (insertError) return;
+    if (msg.id) await supabase.from("chat_messages").update({ pinned: true }).eq("id", msg.id);
+    setMessages((prev) => prev.map((m) => (m === msg ? { ...m, pinned: true } : m)));
+  };
+
+  const handleClear = async () => {
+    if (!restaurant || messages.length === 0 || !window.confirm(t.clearConfirm)) return;
+    await supabase.from("chat_messages").delete().eq("restaurant_id", restaurant.id);
+    setMessages([]);
   };
 
   if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
@@ -78,11 +114,27 @@ export default function ChatPage() {
       contentClassName="flex min-w-0 flex-1 flex-col overflow-x-auto"
       className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 lg:px-8"
     >
-      <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
-      <p className="mt-1 text-sm text-muted">{t.subtitle}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
+          <p className="mt-1 text-sm text-muted">{t.subtitle}</p>
+        </div>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-sunken hover:text-danger-text"
+          >
+            <Trash2 size={13} /> {t.clearButton}
+          </button>
+        )}
+      </div>
 
       <div ref={scrollRef} className="mt-6 flex-1 space-y-3 overflow-y-auto rounded-2xl bg-surface-card p-4 shadow-soft" style={{ minHeight: "50vh", maxHeight: "60vh" }}>
-        {messages.length === 0 && !sending && (
+        {historyLoading && (
+          <p className="flex h-full items-center justify-center text-center text-sm text-muted">{dash.common.loading}</p>
+        )}
+        {!historyLoading && messages.length === 0 && !sending && (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
             <p className="text-sm text-muted">{t.emptyState}</p>
             {t.suggestions?.length > 0 && (
@@ -105,7 +157,7 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+          <div key={m.id || i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
                 m.role === "user" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-heading"
@@ -116,14 +168,14 @@ export default function ChatPage() {
             {m.role === "assistant" && m.toolCalls?.length > 0 && (
               <button
                 type="button"
-                onClick={() => handlePin(i, m.toolCalls, messages[i - 1]?.content || m.content)}
-                disabled={pinnedIndices.has(i)}
+                onClick={() => handlePin(m, messages[i - 1]?.content || m.content)}
+                disabled={m.pinned}
                 className={`mt-1 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                  pinnedIndices.has(i) ? "text-good" : "text-muted hover:bg-surface-sunken hover:text-heading"
+                  m.pinned ? "text-good" : "text-muted hover:bg-surface-sunken hover:text-heading"
                 }`}
               >
-                {pinnedIndices.has(i) ? <Pin size={12} /> : <PinOff size={12} />}
-                {pinnedIndices.has(i) ? t.pinned : t.pinButton}
+                {m.pinned ? <Pin size={12} /> : <PinOff size={12} />}
+                {m.pinned ? t.pinned : t.pinButton}
               </button>
             )}
           </div>

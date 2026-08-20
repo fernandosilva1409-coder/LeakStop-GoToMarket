@@ -114,6 +114,23 @@ create table analytics_widgets (
 );
 
 -- ---------------------------------------------------------------------------
+-- Chat messages — persists "Chat with Your Data" history per restaurant, so
+-- it survives reloads/devices. `tool_calls` mirrors what /api/chat returned
+-- (name/input/output per call) so the "pin as chart" button keeps working
+-- on messages loaded from history, not just ones just received.
+-- ---------------------------------------------------------------------------
+create table chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  role text not null, -- user | assistant
+  content text not null,
+  tool_calls jsonb,
+  pinned boolean not null default false,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Indexes for the queries the app actually makes
 -- ---------------------------------------------------------------------------
 create index idx_dishes_restaurant on dishes(restaurant_id);
@@ -122,6 +139,7 @@ create index idx_purchases_restaurant_date on purchases(restaurant_id, date);
 create index idx_sales_restaurant_date on sales(restaurant_id, date);
 create index idx_members_user on restaurant_members(user_id);
 create index idx_analytics_widgets_restaurant on analytics_widgets(restaurant_id);
+create index idx_chat_messages_restaurant on chat_messages(restaurant_id, created_at);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: a user can only touch rows belonging to a restaurant
@@ -135,6 +153,7 @@ alter table purchases enable row level security;
 alter table sales enable row level security;
 alter table overhead_settings enable row level security;
 alter table analytics_widgets enable row level security;
+alter table chat_messages enable row level security;
 
 -- Helper: is the current user a member of a given restaurant?
 create or replace function is_restaurant_member(target_restaurant_id uuid)
@@ -202,6 +221,15 @@ create policy "members can read analytics widgets" on analytics_widgets
 create policy "members can write analytics widgets" on analytics_widgets
   for insert with check (is_restaurant_member(restaurant_id));
 create policy "members can delete analytics widgets" on analytics_widgets
+  for delete using (is_restaurant_member(restaurant_id));
+
+create policy "members can read chat messages" on chat_messages
+  for select using (is_restaurant_member(restaurant_id));
+create policy "members can write chat messages" on chat_messages
+  for insert with check (is_restaurant_member(restaurant_id));
+create policy "members can update chat messages" on chat_messages
+  for update using (is_restaurant_member(restaurant_id));
+create policy "members can delete chat messages" on chat_messages
   for delete using (is_restaurant_member(restaurant_id));
 
 -- ---------------------------------------------------------------------------
