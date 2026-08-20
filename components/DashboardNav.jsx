@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, Settings, LogOut } from "lucide-react";
+import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, LifeBuoy, Settings, LogOut } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getDashCopy } from "../lib/dashboardCopy";
+import pkg from "../package.json";
 
 export default function DashboardNav({ lang = "pt" }) {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function DashboardNav({ lang = "pt" }) {
     { href: "/dashboard/recommendations", label: t.recommendations, icon: Lightbulb },
     { href: "/dashboard/chat", label: t.chat, icon: MessageCircle },
     { href: "/dashboard/analytics", label: t.analytics, icon: BarChart3 },
+    { href: "/dashboard/support", label: t.support, icon: LifeBuoy },
     { href: "/dashboard/settings", label: t.settings, icon: Settings },
   ];
 
@@ -63,6 +65,7 @@ export default function DashboardNav({ lang = "pt" }) {
         <LogOut size={18} strokeWidth={2} className="shrink-0" />
         <span className="hidden truncate sm:inline">{t.logout}</span>
       </button>
+      <p className="hidden shrink-0 px-3 pb-3 text-center font-mono text-[10px] text-sidebar-text/40 sm:block">v{pkg.version}</p>
     </nav>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Globe, CircleDollarSign } from "lucide-react";
+import Link from "next/link";
+import { Globe, CircleDollarSign, User, ChefHat, Plug, ArrowRight } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { LANGUAGES, useDetectedLanguage } from "../../lib/landingCopy";
@@ -10,6 +11,7 @@ import Card from "../../components/ui/Card";
 import Field from "../../components/ui/Field";
 import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
+import pkg from "../../package.json";
 
 const CURRENCIES = Object.keys(CURRENCY_SYMBOLS);
 
@@ -20,6 +22,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -31,6 +34,10 @@ export default function SettingsPage() {
     setLanguage(restaurant.language || "pt");
     setCurrency(restaurant.currency || "EUR");
   }, [restaurant]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setUserEmail(session?.user?.email || ""));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,6 +83,34 @@ export default function SettingsPage() {
             {saving ? dash.common.saving : dash.common.save}
           </Button>
         </form>
+      </Card>
+
+      <Card className="mt-6">
+        <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.accountTitle}</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label={t.accountUser} icon={User}>
+            <p className="px-1 py-1.5 text-sm text-heading">{userEmail || "—"}</p>
+          </Field>
+          <Field label={t.accountRestaurant} icon={ChefHat}>
+            <p className="px-1 py-1.5 text-sm text-heading">{restaurant.name}</p>
+          </Field>
+        </div>
+        <p className="mt-4 font-mono text-[11px] text-muted">{t.versionLabel} v{pkg.version}</p>
+      </Card>
+
+      <Card className="mt-6">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-muted">
+            <Plug size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-heading">{t.integrationsTitle}</p>
+            <p className="mt-1 text-sm text-muted">{t.integrationsBody}</p>
+            <Link href="/dashboard/support" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brass hover:text-brass-dark">
+              {t.integrationsLink} <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
       </Card>
     </PageShell>
   );
