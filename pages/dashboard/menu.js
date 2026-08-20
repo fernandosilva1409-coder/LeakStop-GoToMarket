@@ -7,6 +7,7 @@ import { formatMoney } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import { downloadCsvTemplate } from "../../lib/csv";
+import { fetchAllRows } from "../../lib/supabaseUtils";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import CsvImportPanel from "../../components/ui/CsvImportPanel";
@@ -42,9 +43,9 @@ export default function MenuPage() {
   const t = dash.menu;
 
   const loadDishes = async (restaurantId) => {
-    const [{ data: dishRows }, { data: ingredientRows }] = await Promise.all([
-      supabase.from("dishes").select("*").eq("restaurant_id", restaurantId).order("name"),
-      supabase.from("dish_ingredients").select("*"),
+    const [dishRows, ingredientRows] = await Promise.all([
+      fetchAllRows(() => supabase.from("dishes").select("*").eq("restaurant_id", restaurantId).order("name")),
+      fetchAllRows(() => supabase.from("dish_ingredients").select("*")),
     ]);
     const byDish = {};
     (ingredientRows || []).forEach((ing) => {
