@@ -7,6 +7,7 @@ import { getDashCopy } from "../../lib/dashboardCopy";
 import PageShell from "../../components/ui/PageShell";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
+import WidgetChart from "../../components/ui/WidgetChart";
 
 export default function ChatPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -21,6 +22,7 @@ export default function ChatPage() {
   const lang = restaurant?.language || browserLang;
   const dash = getDashCopy(lang);
   const t = dash.chat;
+  const currency = restaurant?.currency || "EUR";
 
   useEffect(() => {
     if (!restaurant) return;
@@ -166,17 +168,28 @@ export default function ChatPage() {
               {m.content}
             </div>
             {m.role === "assistant" && m.toolCalls?.length > 0 && (
-              <button
-                type="button"
-                onClick={() => handlePin(m, messages[i - 1]?.content || m.content)}
-                disabled={m.pinned}
-                className={`mt-1 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                  m.pinned ? "text-good" : "text-muted hover:bg-surface-sunken hover:text-heading"
-                }`}
-              >
-                {m.pinned ? <Pin size={12} /> : <PinOff size={12} />}
-                {m.pinned ? t.pinned : t.pinButton}
-              </button>
+              <>
+                <div className="mt-2 w-full max-w-md rounded-2xl bg-surface-card p-4 shadow-soft">
+                  <WidgetChart
+                    toolName={m.toolCalls[m.toolCalls.length - 1].name}
+                    toolInput={m.toolCalls[m.toolCalls.length - 1].input}
+                    data={m.toolCalls[m.toolCalls.length - 1].output}
+                    currency={currency}
+                    labels={dash.analytics}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handlePin(m, messages[i - 1]?.content || m.content)}
+                  disabled={m.pinned}
+                  className={`mt-1 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                    m.pinned ? "text-good" : "text-muted hover:bg-surface-sunken hover:text-heading"
+                  }`}
+                >
+                  {m.pinned ? <Pin size={12} /> : <PinOff size={12} />}
+                  {m.pinned ? t.pinned : t.pinButton}
+                </button>
+              </>
             )}
           </div>
         ))}
