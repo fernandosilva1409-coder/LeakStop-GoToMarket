@@ -1,21 +1,26 @@
-import { AlertTriangle, PackageX } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, PackageX, Star, ArrowUpRight, ArrowDownRight, Lightbulb } from "lucide-react";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useAnalysis } from "../../lib/useAnalysis";
-import { computeRecommendations, formatMoney } from "../../lib/calculations";
+import { computeRecommendations, formatMoney, catLabel, num } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import PageShell from "../../components/ui/PageShell";
+import Card from "../../components/ui/Card";
+import WarningBanner from "../../components/ui/WarningBanner";
 
-const CLASS_TONE = {
-  star: "bg-good/10 text-good",
-  plowhorse: "bg-brass/10 text-brass",
-  puzzle: "bg-surface-sunken text-muted",
-  dog: "bg-danger-bg text-danger-text",
+const MATRIX_INFO = {
+  star: { icon: Star, tone: "text-good" },
+  plowhorse: { icon: ArrowUpRight, tone: "text-brass" },
+  puzzle: { icon: Lightbulb, tone: "text-muted" },
+  dog: { icon: ArrowDownRight, tone: "text-danger-text" },
 };
+const CLASSES = ["star", "plowhorse", "puzzle", "dog"];
 
 export default function RecommendationsPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
   const { analysis, loading } = useAnalysis(restaurant);
+  const [recCat, setRecCat] = useState("All");
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -27,6 +32,9 @@ export default function RecommendationsPage() {
 
   const currency = restaurant.currency || "EUR";
   const recs = loading || !analysis ? null : computeRecommendations(analysis, currency, lang);
+
+  const recCategories = recs ? Array.from(new Set(recs.matrix.map((d) => catLabel(d.category)))) : [];
+  const filteredMatrix = recs ? (recCat === "All" ? recs.matrix : recs.matrix.filter((d) => catLabel(d.category) === recCat)) : [];
 
   return (
     <PageShell lang={lang}>
@@ -43,38 +51,65 @@ export default function RecommendationsPage() {
             </p>
           )}
 
+          {(recs.tooSmallCategories.length > 0 || recs.noRecipe.length > 0) && (
+            <div className="mt-6">
+              <WarningBanner>
+                {recs.tooSmallCategories.length > 0 && <span>{t.smallCategoriesWarning(recs.tooSmallCategories.length)} </span>}
+                {recs.noRecipe.length > 0 && <span>{t.noRecipeWarning(recs.noRecipe.length)}</span>}
+              </WarningBanner>
+            </div>
+          )}
+
           {recs.matrix.length > 0 && (
-            <section className="mt-6">
+            <section className={recs.tooSmallCategories.length > 0 || recs.noRecipe.length > 0 ? "" : "mt-6"}>
               <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.matrixTitle}</p>
-              <div className="overflow-hidden rounded-2xl bg-surface-card shadow-soft">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-surface-border text-left font-mono text-[11px] uppercase tracking-wide text-muted">
-                      <th className="px-4 py-3">{t.colDish}</th>
-                      <th className="px-4 py-3">{t.colCategory}</th>
-                      <th className="px-4 py-3 text-right">{t.colSold}</th>
-                      <th className="px-4 py-3 text-right">{t.colFullMargin}</th>
-                      <th className="px-4 py-3">{t.colClassification}</th>
-                      <th className="px-4 py-3 text-right">{t.colSuggestedPrice}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recs.matrix.map((d) => (
-                      <tr key={d.id} className="border-b border-surface-border/60 last:border-0 hover:bg-surface-sunken">
-                        <td className="px-4 py-3 font-medium text-heading">{d.name}</td>
-                        <td className="px-4 py-3 text-muted">{d.category || "—"}</td>
-                        <td className="px-4 py-3 text-right font-mono text-muted">{d.sold}</td>
-                        <td className="px-4 py-3 text-right font-mono text-muted">{d.fullMarginPct.toFixed(0)}%</td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${CLASS_TONE[d.cls]}`}>
-                            {t.classLabels[d.cls]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-muted">{d.suggestedPrice ? formatMoney(d.suggestedPrice, currency) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setRecCat("All")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${recCat === "All" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"}`}
+                >
+                  {t.allCategories} ({recs.matrix.length})
+                </button>
+                {recCategories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setRecCat(c)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${recCat === c ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"}`}
+                  >
+                    {c} ({recs.matrix.filter((d) => catLabel(d.category) === c).length})
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {CLASSES.map((g) => {
+                  const items = filteredMatrix.filter((d) => d.cls === g).sort((a, b) => b.sold * b.price - a.sold * a.price);
+                  if (items.length === 0) return null;
+                  const info = MATRIX_INFO[g];
+                  const Icon = info.icon;
+                  return (
+                    <Card key={g}>
+                      <div className={`flex items-center gap-2 ${info.tone}`}>
+                        <Icon size={16} />
+                        <p className="text-sm font-semibold">
+                          {t.classLabels[g]} <span className="font-normal text-muted">({items.length})</span>
+                        </p>
+                      </div>
+                      <p className="mt-1.5 text-xs leading-relaxed text-muted">{t.classDescriptions[g]}</p>
+                      <div className="mt-3 max-h-64 space-y-2 overflow-y-auto border-t border-surface-border pt-3">
+                        {items.map((d) => (
+                          <div key={d.id} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate text-heading">{d.name}</span>
+                            <span className="shrink-0 font-mono text-[11px] text-muted">
+                              {t.dishStatLine(num(d.fullMarginPct, 0), d.sold, d.suggestedPrice ? formatMoney(d.suggestedPrice, currency) : null)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             </section>
           )}
