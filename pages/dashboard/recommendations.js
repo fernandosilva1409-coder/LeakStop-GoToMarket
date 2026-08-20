@@ -97,13 +97,13 @@ export default function RecommendationsPage() {
                         </p>
                       </div>
                       <p className="mt-1.5 text-xs leading-relaxed text-muted">{t.classDescriptions[g]}</p>
-                      <div className="mt-3 max-h-64 space-y-2 overflow-y-auto border-t border-surface-border pt-3">
+                      <div className="mt-3 max-h-64 space-y-2.5 overflow-y-auto overflow-x-hidden border-t border-surface-border pt-3">
                         {items.map((d) => (
-                          <div key={d.id} className="flex items-center justify-between gap-2 text-sm">
-                            <span className="truncate text-heading">{d.name}</span>
-                            <span className="shrink-0 font-mono text-[11px] text-muted">
-                              {t.dishStatLine(num(d.fullMarginPct, 0), d.sold, d.suggestedPrice ? formatMoney(d.suggestedPrice, currency) : null)}
-                            </span>
+                          <div key={d.id} className="min-w-0 text-sm">
+                            <p className="truncate font-medium text-heading">{d.name}</p>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-muted">
+                              {t.dishStatLine(num(d.fullMarginPct, 0), num(d.sold, 0), d.suggestedPrice ? formatMoney(d.suggestedPrice, currency) : null)}
+                            </p>
                           </div>
                         ))}
                       </div>
