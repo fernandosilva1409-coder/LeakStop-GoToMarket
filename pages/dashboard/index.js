@@ -282,7 +282,7 @@ export default function Dashboard() {
                     <tr key={d.id} className="border-b border-surface-border/60 last:border-0 hover:bg-surface-sunken">
                       <td className="px-4 py-3 font-medium text-heading">{d.name}</td>
                       <td className="px-4 py-3 text-muted">{catLabel(d.category)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-muted">{d.sold}</td>
+                      <td className="px-4 py-3 text-right font-mono text-muted">{num(d.sold, 0)}</td>
                       <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.cost, currency)}</td>
                       <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.overheadPerPlate, currency)}</td>
                       <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.fullCost, currency)}</td>
