@@ -8,6 +8,7 @@ import PageShell from "../../components/ui/PageShell";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import WidgetChart from "../../components/ui/WidgetChart";
+import { fetchAllRows } from "../../lib/supabaseUtils";
 
 export default function ChatPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -27,11 +28,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!restaurant) return;
     (async () => {
-      const { data } = await supabase
-        .from("chat_messages")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .order("created_at", { ascending: true });
+      const data = await fetchAllRows(() =>
+        supabase.from("chat_messages").select("*").eq("restaurant_id", restaurant.id).order("created_at", { ascending: true })
+      );
       setMessages((data || []).map((m) => ({ id: m.id, role: m.role, content: m.content, toolCalls: m.tool_calls || [], pinned: m.pinned })));
       setHistoryLoading(false);
     })();

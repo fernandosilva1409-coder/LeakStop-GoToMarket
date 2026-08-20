@@ -7,6 +7,7 @@ import { getDashCopy } from "../../lib/dashboardCopy";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import WidgetChart from "../../components/ui/WidgetChart";
+import { fetchAllRows } from "../../lib/supabaseUtils";
 
 function WidgetCard({ widget, t, currency, onDelete }) {
   return (
@@ -38,11 +39,9 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!restaurant) return;
     (async () => {
-      const { data } = await supabase
-        .from("analytics_widgets")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .order("created_at", { ascending: false });
+      const data = await fetchAllRows(() =>
+        supabase.from("analytics_widgets").select("*").eq("restaurant_id", restaurant.id).order("created_at", { ascending: false })
+      );
       setWidgets(data || []);
       setLoading(false);
     })();
