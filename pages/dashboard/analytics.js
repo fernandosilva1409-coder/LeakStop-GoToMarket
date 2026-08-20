@@ -47,7 +47,7 @@ function WidgetCard({ widget, t, currency, onDelete }) {
                 interval={0} angle={-20} textAnchor="end" height={50}
               />
               <YAxis
-                domain={[(min) => Math.min(0, min), (max) => Math.max(0, max)]}
+                domain={[Math.min(0, ...normalized.items.map((it) => it.value)), Math.max(0, ...normalized.items.map((it) => it.value))]}
                 tick={{ fill: "#8B897A", fontSize: 10, fontFamily: "IBM Plex Mono, monospace" }} axisLine={{ stroke: "#E7E4DA" }} tickLine={false}
               />
               <Tooltip
