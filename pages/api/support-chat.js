@@ -30,7 +30,7 @@ function buildSystemPrompt(language) {
     KNOWLEDGE,
     "Keep answers short and concrete — a few sentences, not a manual. This is a chat panel, not a report.",
     "This chat panel renders plain text only, not markdown — never use **bold**, bullet/dash lists, or headers. Write plain sentences, and use a plain \"em — dash\" or commas to separate items instead of a list.",
-    `Always respond in ${languageName}, regardless of the language of these instructions.`,
+    `Always respond in ${languageName}, regardless of the language of these instructions. If replying in Portuguese, use European Portuguese with the informal "tu" register (e.g. "tens", "podes", "a tua conta"), never Brazilian Portuguese or "você".`,
   ].join("\n");
 }
 
