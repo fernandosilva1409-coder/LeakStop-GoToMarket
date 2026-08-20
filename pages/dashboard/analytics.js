@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { supabase } from "../../lib/supabaseClient";
@@ -11,7 +11,15 @@ import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 
 function WidgetCard({ widget, t, currency, onDelete }) {
-  const normalized = normalizeWidget(widget.tool_name, widget.tool_input, widget.data);
+  const normalized = useMemo(
+    () => normalizeWidget(widget.tool_name, widget.tool_input, widget.data),
+    [widget.tool_name, widget.tool_input, widget.data]
+  );
+  const yDomain = useMemo(() => {
+    if (normalized.kind !== "bar") return undefined;
+    const values = normalized.items.map((it) => it.value);
+    return [Math.min(0, ...values), Math.max(0, ...values)];
+  }, [normalized]);
 
   return (
     <Card>
@@ -47,7 +55,7 @@ function WidgetCard({ widget, t, currency, onDelete }) {
                 interval={0} angle={-20} textAnchor="end" height={50}
               />
               <YAxis
-                domain={[Math.min(0, ...normalized.items.map((it) => it.value)), Math.max(0, ...normalized.items.map((it) => it.value))]}
+                domain={yDomain}
                 tick={{ fill: "#8B897A", fontSize: 10, fontFamily: "IBM Plex Mono, monospace" }} axisLine={{ stroke: "#E7E4DA" }} tickLine={false}
               />
               <Tooltip
