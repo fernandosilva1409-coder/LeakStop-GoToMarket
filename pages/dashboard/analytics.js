@@ -55,7 +55,7 @@ function WidgetCard({ widget, t, currency, onDelete }) {
                 labelStyle={{ color: "#26251C" }}
                 formatter={(v) => (normalized.money ? formatMoney(v, currency) : normalized.pct ? `${num(v, 0)}%` : num(v, 0))}
               />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="value">
                 {normalized.items.map((_, i) => <Cell key={i} fill="#C99A3D" />)}
               </Bar>
             </BarChart>
