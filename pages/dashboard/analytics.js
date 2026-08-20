@@ -46,7 +46,10 @@ function WidgetCard({ widget, t, currency, onDelete }) {
                 axisLine={{ stroke: "#E7E4DA" }} tickLine={false}
                 interval={0} angle={-20} textAnchor="end" height={50}
               />
-              <YAxis tick={{ fill: "#8B897A", fontSize: 10, fontFamily: "IBM Plex Mono, monospace" }} axisLine={{ stroke: "#E7E4DA" }} tickLine={false} />
+              <YAxis
+                domain={[(min) => Math.min(0, min), (max) => Math.max(0, max)]}
+                tick={{ fill: "#8B897A", fontSize: 10, fontFamily: "IBM Plex Mono, monospace" }} axisLine={{ stroke: "#E7E4DA" }} tickLine={false}
+              />
               <Tooltip
                 contentStyle={{ background: "#FFFFFF", border: "1px solid #E7E4DA", borderRadius: 8, fontFamily: "IBM Plex Mono, monospace", fontSize: 12 }}
                 labelStyle={{ color: "#26251C" }}
