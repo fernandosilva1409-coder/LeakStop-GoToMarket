@@ -63,19 +63,21 @@ export default function DashboardNav({ lang = "pt" }) {
         })}
       </div>
 
-      {userEmail && (
-        <p className="hidden shrink-0 truncate border-t border-sidebar-border px-4 pt-3 text-xs text-sidebar-text/60 sm:block" title={userEmail}>
-          {userEmail}
-        </p>
-      )}
-      <button
-        onClick={handleLogout}
-        title={t.logout}
-        className={`flex shrink-0 items-center justify-center gap-3 px-2.5 py-4 text-[13.5px] font-semibold text-sidebar-text/80 hover:text-white sm:justify-start sm:px-3 ${userEmail ? "" : "border-t border-sidebar-border"}`}
-      >
-        <LogOut size={18} strokeWidth={2} className="shrink-0" />
-        <span className="hidden truncate sm:inline">{t.logout}</span>
-      </button>
+      <div className="shrink-0 border-t border-sidebar-border">
+        {userEmail && (
+          <p className="hidden truncate px-4 pt-3 text-xs text-sidebar-text/60 sm:block" title={userEmail}>
+            {userEmail}
+          </p>
+        )}
+        <button
+          onClick={handleLogout}
+          title={t.logout}
+          className="flex w-full items-center justify-center gap-3 px-2.5 py-4 text-[13.5px] font-semibold text-sidebar-text/80 hover:text-white sm:justify-start sm:px-3"
+        >
+          <LogOut size={18} strokeWidth={2} className="shrink-0" />
+          <span className="hidden truncate sm:inline">{t.logout}</span>
+        </button>
+      </div>
       <p className="hidden shrink-0 px-3 pb-3 text-center font-mono text-[10px] text-sidebar-text/40 sm:block">v{pkg.version}</p>
     </nav>
   );
