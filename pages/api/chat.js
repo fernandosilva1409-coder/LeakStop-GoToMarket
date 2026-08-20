@@ -2,6 +2,7 @@ import { anthropic, CHAT_MODEL } from "../../lib/anthropic";
 import { requireRestaurantMember } from "../../lib/apiAuth";
 import { loadChatContext } from "../../lib/chatContext";
 import { CHAT_TOOLS, runChatTool } from "../../lib/chatTools";
+import { getDashCopy } from "../../lib/dashboardCopy";
 
 const LANGUAGE_NAMES = { pt: "Portuguese", en: "English", de: "German", fr: "French", es: "Spanish" };
 const MAX_TOOL_ROUNDS = 4;
@@ -9,6 +10,7 @@ const MAX_HISTORY_MESSAGES = 20;
 
 function buildSystemPrompt(restaurant) {
   const languageName = LANGUAGE_NAMES[restaurant.language] || "Portuguese";
+  const pinButtonLabel = getDashCopy(restaurant.language).chat.pinButton;
   return [
     'You are the "Chat with Your Data" assistant inside LeakStop, a restaurant cost and margin analytics app.',
     `You are answering questions about "${restaurant.name}" only. You have no access to and must never speculate about any other restaurant's data.`,
@@ -16,7 +18,7 @@ function buildSystemPrompt(restaurant) {
     `Monetary values returned by tools are already in the restaurant's currency (${restaurant.currency || "EUR"}) — do not convert or relabel them.`,
     "Keep answers short and concrete: lead with the number or the direct answer, then at most one or two sentences of context. This is a chat panel, not a report.",
     "This chat panel renders plain text only, not markdown — never use **bold**, bullet/dash lists, or headers. Write plain sentences, and use a plain \"em — dash\" or commas to separate items instead of a list.",
-    "You cannot draw or render charts yourself — you can only answer in text. If the user asks for a chart, graph, or visualization, answer their question in text with the real numbers, then briefly mention that they can click \"Pin as chart\" below your answer to turn it into a chart on the Analytics page.",
+    `You cannot draw or render charts yourself — you can only answer in text. If the user asks for a chart, graph, or visualization, answer their question in text with the real numbers, then briefly mention that they can click "${pinButtonLabel}" below your answer to turn it into a chart on the Analytics page. Use that exact button label, not a translation of it.`,
     "If a question needs a breakdown or filter no tool supports (e.g. a dimension not covered by any tool's parameters), say plainly what you can't do and offer the closest thing you can answer instead — never claim you have no tools at all when other tools could still answer part of the question.",
     `Always respond in ${languageName}, regardless of the language of these instructions or of the tool data.`,
   ].join("\n");
