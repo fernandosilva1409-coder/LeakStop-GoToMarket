@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, LifeBuoy, Settings, LogOut } from "lucide-react";
@@ -8,6 +9,11 @@ import pkg from "../package.json";
 export default function DashboardNav({ lang = "pt" }) {
   const router = useRouter();
   const t = getDashCopy(lang).nav;
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setUserEmail(session?.user?.email || ""));
+  }, []);
 
   const LINKS = [
     { href: "/dashboard", label: t.dashboard, icon: LayoutDashboard },
@@ -57,10 +63,15 @@ export default function DashboardNav({ lang = "pt" }) {
         })}
       </div>
 
+      {userEmail && (
+        <p className="hidden shrink-0 truncate border-t border-sidebar-border px-4 pt-3 text-xs text-sidebar-text/60 sm:block" title={userEmail}>
+          {userEmail}
+        </p>
+      )}
       <button
         onClick={handleLogout}
         title={t.logout}
-        className="flex shrink-0 items-center justify-center gap-3 border-t border-sidebar-border px-2.5 py-4 text-[13.5px] font-semibold text-sidebar-text/80 hover:text-white sm:justify-start sm:px-3"
+        className={`flex shrink-0 items-center justify-center gap-3 px-2.5 py-4 text-[13.5px] font-semibold text-sidebar-text/80 hover:text-white sm:justify-start sm:px-3 ${userEmail ? "" : "border-t border-sidebar-border"}`}
       >
         <LogOut size={18} strokeWidth={2} className="shrink-0" />
         <span className="hidden truncate sm:inline">{t.logout}</span>
