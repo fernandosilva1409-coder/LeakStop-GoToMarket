@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Globe, CircleDollarSign, User, ChefHat, Plug, ArrowRight } from "lucide-react";
+import { Globe, CircleDollarSign, ChefHat, Plug, ArrowRight, History } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { LANGUAGES, useDetectedLanguage } from "../../lib/landingCopy";
@@ -22,7 +22,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -34,10 +33,6 @@ export default function SettingsPage() {
     setLanguage(restaurant.language || "pt");
     setCurrency(restaurant.currency || "EUR");
   }, [restaurant]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setUserEmail(session?.user?.email || ""));
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,15 +82,15 @@ export default function SettingsPage() {
 
       <Card className="mt-6">
         <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.accountTitle}</p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label={t.accountUser} icon={User}>
-            <p className="px-1 py-1.5 text-sm text-heading">{userEmail || "—"}</p>
-          </Field>
-          <Field label={t.accountRestaurant} icon={ChefHat}>
-            <p className="px-1 py-1.5 text-sm text-heading">{restaurant.name}</p>
-          </Field>
+        <Field label={t.accountRestaurant} icon={ChefHat}>
+          <p className="px-1 py-1.5 text-sm text-heading">{restaurant.name}</p>
+        </Field>
+        <div className="mt-4 flex items-center justify-between">
+          <p className="font-mono text-[11px] text-muted">{t.versionLabel} v{pkg.version}</p>
+          <Link href="/dashboard/changelog" className="inline-flex items-center gap-1 text-xs font-semibold text-brass hover:text-brass-dark">
+            <History size={13} /> {t.changelogLink}
+          </Link>
         </div>
-        <p className="mt-4 font-mono text-[11px] text-muted">{t.versionLabel} v{pkg.version}</p>
       </Card>
 
       <Card className="mt-6">
