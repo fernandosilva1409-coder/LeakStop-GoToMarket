@@ -16,6 +16,8 @@ create table restaurants (
   city text, -- display label for the geocoded location below; weather correlation needs latitude/longitude
   latitude numeric(9, 6),
   longitude numeric(9, 6),
+  weather_proposal text, -- Haiku-written weekly weather proposal (Weather page), cached ~24h
+  weather_proposal_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -287,6 +289,8 @@ create policy "members can write weather" on weather_daily
   for insert with check (is_restaurant_member(restaurant_id));
 create policy "members can update weather" on weather_daily
   for update using (is_restaurant_member(restaurant_id));
+create policy "members can delete weather" on weather_daily
+  for delete using (is_restaurant_member(restaurant_id));
 
 -- ---------------------------------------------------------------------------
 -- Convenience: when a new restaurant is created, auto-create its owner

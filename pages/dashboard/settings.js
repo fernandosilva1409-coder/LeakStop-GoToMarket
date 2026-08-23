@@ -82,11 +82,18 @@ export default function SettingsPage() {
       const match = body?.results?.[0];
       if (!match) { setLocationError(t.locationNotFound); setSavingLocation(false); return; }
       const displayCity = [match.name, match.country].filter(Boolean).join(", ");
+      const coordsChanged = Number(restaurant.latitude) !== Number(match.latitude) || Number(restaurant.longitude) !== Number(match.longitude);
       const { error } = await supabase
         .from("restaurants")
         .update({ city: displayCity, latitude: match.latitude, longitude: match.longitude })
         .eq("id", restaurant.id);
       if (error) { setLocationError(error.message); setSavingLocation(false); return; }
+      // weather_daily is keyed by restaurant_id + date only, not lat/lon — a
+      // moved location must invalidate the cache or ensureWeatherData() will
+      // see "days already covered" and keep serving the old city's weather.
+      if (coordsChanged) {
+        await supabase.from("weather_daily").delete().eq("restaurant_id", restaurant.id);
+      }
       setCity(displayCity);
       setLocationSaved(true);
     } catch (err) {

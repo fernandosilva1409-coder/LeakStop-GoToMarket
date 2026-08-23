@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Sun, Cloud, CloudFog, CloudRain, CloudSnow, CloudLightning, TrendingUp, TrendingDown } from "lucide-react";
+import { Sun, Cloud, CloudFog, CloudRain, CloudSnow, CloudLightning, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
@@ -32,6 +33,36 @@ export default function WeatherPage() {
   const [range, setRange] = useState("all");
 
   const { data, loading } = useWeatherAnalytics(restaurant);
+
+  const [proposal, setProposal] = useState(null);
+  const [proposalLoading, setProposalLoading] = useState(false);
+  const [proposalError, setProposalError] = useState("");
+
+  useEffect(() => {
+    if (!restaurant || !data?.hasLocation || !data?.hasData) return;
+    let active = true;
+    (async () => {
+      setProposalLoading(true);
+      setProposalError("");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch("/api/weather-proposal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ restaurantId: restaurant.id }),
+        });
+        const body = await res.json();
+        if (!active) return;
+        if (!res.ok) { setProposalError(body.error || t.proposalError); return; }
+        setProposal(body.proposal);
+      } catch {
+        if (active) setProposalError(t.proposalError);
+      }
+      if (active) setProposalLoading(false);
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant?.id, data?.hasLocation, data?.hasData]);
 
   const { byCondition, byTemperature, sensitivity } = useMemo(() => {
     if (!data?.sales) return { byCondition: [], byTemperature: [], sensitivity: [] };
@@ -95,6 +126,22 @@ export default function WeatherPage() {
               </button>
             ))}
           </div>
+
+          {(proposalLoading || proposal || proposalError) && (
+            <Card className="mt-4 border border-brass/20 bg-gradient-to-br from-surface-card to-brass/5">
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="text-brass" />
+                <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.proposalTitle}</p>
+              </div>
+              {proposalLoading ? (
+                <p className="mt-2 text-sm text-muted">{t.proposalLoading}</p>
+              ) : proposalError ? (
+                <p className="mt-2 text-sm text-muted">{proposalError}</p>
+              ) : (
+                <p className="mt-2 text-sm leading-relaxed text-heading">{proposal}</p>
+              )}
+            </Card>
+          )}
 
           {byCondition.length > 0 && (
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
