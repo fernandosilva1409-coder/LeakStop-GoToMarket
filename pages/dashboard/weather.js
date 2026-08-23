@@ -23,6 +23,32 @@ function cutoffDate(rangeDays) {
   return d.toISOString().slice(0, 10);
 }
 
+// Shared by the sensitivity list and the forecast cards — both derive from
+// the same catFilter state, so the control appears wherever the user is
+// looking rather than only above one of the two sections it governs.
+function CategoryPills({ categories, value, onChange, allLabel }) {
+  if (!categories?.length) return null;
+  return (
+    <div className="mb-4 mt-3 flex flex-wrap gap-2">
+      <button
+        onClick={() => onChange("All")}
+        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${value === "All" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-muted hover:text-heading"}`}
+      >
+        {allLabel}
+      </button>
+      {categories.map((c) => (
+        <button
+          key={c}
+          onClick={() => onChange(c)}
+          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${value === c ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-muted hover:text-heading"}`}
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function WeatherPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
   const browserLang = useDetectedLanguage();
@@ -185,25 +211,7 @@ export default function WeatherPage() {
           <Card className="mt-6">
             <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.sensitivityTitle}</p>
             <p className="mt-1 text-sm text-muted">{t.sensitivityHint}</p>
-            {data?.categories?.length > 0 && (
-              <div className="mb-4 mt-3 flex flex-wrap gap-2">
-                <button
-                  onClick={() => setCatFilter("All")}
-                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${catFilter === "All" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-muted hover:text-heading"}`}
-                >
-                  {dash.recommendations.allCategories}
-                </button>
-                {data.categories.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCatFilter(c)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${catFilter === c ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-muted hover:text-heading"}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
+            <CategoryPills categories={data?.categories} value={catFilter} onChange={setCatFilter} allLabel={dash.recommendations.allCategories} />
             {sensitivity.length === 0 ? (
               <p className="text-sm text-muted">{t.sensitivityEmpty}</p>
             ) : (
@@ -230,7 +238,8 @@ export default function WeatherPage() {
           <Card className="mt-6">
             <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.forecastTitle}</p>
             <p className="mt-1 text-sm text-muted">{t.forecastHint}</p>
-            <p className="mb-4 mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold">
+            <CategoryPills categories={data?.categories} value={catFilter} onChange={setCatFilter} allLabel={dash.recommendations.allCategories} />
+            <p className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold">
               <span className="text-good">↑ {t.boostLabel}</span>
               <span className="text-danger-text">↓ {t.trimLabel}</span>
             </p>
