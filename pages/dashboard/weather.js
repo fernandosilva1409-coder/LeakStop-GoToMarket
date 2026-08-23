@@ -64,6 +64,8 @@ export default function WeatherPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurant?.id, data?.hasLocation, data?.hasData]);
 
+  const [catFilter, setCatFilter] = useState("All");
+
   const { byCondition, byTemperature, sensitivity } = useMemo(() => {
     if (!data?.sales) return { byCondition: [], byTemperature: [], sensitivity: [] };
     let sales = data.sales;
@@ -74,8 +76,15 @@ export default function WeatherPage() {
       weather = weather.filter((w) => w.date >= cutoff);
     }
     const correlation = computeWeatherCorrelation(sales, weather, data.dishInfoByName);
-    return { ...correlation, sensitivity: computeDishWeatherSensitivity(sales, weather, data.dishInfoByName) };
-  }, [data, range]);
+    // Default view ("All") skips whatever categories the restaurant already
+    // excluded from analytics in Settings (typically drinks/bottles, where
+    // this whole model doesn't apply) — picking a specific category
+    // overrides that, since asking for it explicitly is a clear signal.
+    const sensitivityOpts = catFilter === "All"
+      ? { excludedCategories: data.excludedCategories }
+      : { category: catFilter };
+    return { ...correlation, sensitivity: computeDishWeatherSensitivity(sales, weather, data.dishInfoByName, sensitivityOpts) };
+  }, [data, range, catFilter]);
 
   const overallAvgRevenuePerDay = useMemo(() => {
     if (!byCondition.length) return 0;
@@ -175,7 +184,26 @@ export default function WeatherPage() {
 
           <Card className="mt-6">
             <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.sensitivityTitle}</p>
-            <p className="mb-4 mt-1 text-sm text-muted">{t.sensitivityHint}</p>
+            <p className="mt-1 text-sm text-muted">{t.sensitivityHint}</p>
+            {data?.categories?.length > 0 && (
+              <div className="mb-4 mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => setCatFilter("All")}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${catFilter === "All" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-muted hover:text-heading"}`}
+                >
+                  {dash.recommendations.allCategories}
+                </button>
+                {data.categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCatFilter(c)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${catFilter === c ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-sunken text-muted hover:text-heading"}`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
             {sensitivity.length === 0 ? (
               <p className="text-sm text-muted">{t.sensitivityEmpty}</p>
             ) : (

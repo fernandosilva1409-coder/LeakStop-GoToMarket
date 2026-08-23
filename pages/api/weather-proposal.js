@@ -45,12 +45,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [dishRows, saleRows] = await Promise.all([
+    const [dishRows, saleRows, excludedRows] = await Promise.all([
       fetchAllRows(() => supabase.from("dishes").select("*").eq("restaurant_id", restaurant.id)),
       fetchAllRows(() => supabase.from("sales").select("*").eq("restaurant_id", restaurant.id)),
+      fetchAllRows(() => supabase.from("excluded_categories").select("*").eq("restaurant_id", restaurant.id)).catch(() => []),
     ]);
     const dishInfoByName = buildDishInfo((dishRows || []).map((d) => ({ name: d.name, category: d.category, price: d.price })));
     const sales = (saleRows || []).map((s) => ({ dish: s.dish_name, quantity: s.quantity, date: s.date }));
+    const excludedCategories = (excludedRows || []).map((r) => r.category);
 
     const saleDates = sales.map((s) => s.date).filter(Boolean).sort();
     const minDate = saleDates[0];
@@ -62,7 +64,7 @@ export default async function handler(req, res) {
     }
 
     const { byCondition, byTemperature } = computeWeatherCorrelation(sales, weather, dishInfoByName);
-    const sensitivity = computeDishWeatherSensitivity(sales, weather, dishInfoByName).slice(0, 8);
+    const sensitivity = computeDishWeatherSensitivity(sales, weather, dishInfoByName, { excludedCategories }).slice(0, 8);
     const forecast = await fetchForecast(restaurant.latitude, restaurant.longitude).catch(() => []);
 
     if (!forecast.length || (!byCondition.length && !byTemperature.length)) {

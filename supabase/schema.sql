@@ -330,14 +330,23 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists sales_mark_analysis_dirty on sales;
 create trigger sales_mark_analysis_dirty after insert or update or delete on sales
   for each row execute function trg_mark_analysis_dirty();
+
+drop trigger if exists purchases_mark_analysis_dirty on purchases;
 create trigger purchases_mark_analysis_dirty after insert or update or delete on purchases
   for each row execute function trg_mark_analysis_dirty();
+
+drop trigger if exists dishes_mark_analysis_dirty on dishes;
 create trigger dishes_mark_analysis_dirty after insert or update or delete on dishes
   for each row execute function trg_mark_analysis_dirty();
+
+drop trigger if exists overhead_mark_analysis_dirty on overhead_settings;
 create trigger overhead_mark_analysis_dirty after insert or update or delete on overhead_settings
   for each row execute function trg_mark_analysis_dirty();
+
+drop trigger if exists excluded_categories_mark_analysis_dirty on excluded_categories;
 create trigger excluded_categories_mark_analysis_dirty after insert or update or delete on excluded_categories
   for each row execute function trg_mark_analysis_dirty();
 
@@ -357,5 +366,17 @@ begin
 end;
 $$ language plpgsql security definer;
 
-create trigger dish_ingredients_mark_analysis_dirty after insert or update or delete on dish_ingredients
+drop trigger if exists dish_ingredients_insert_dirty on dish_ingredients;
+create trigger dish_ingredients_insert_dirty
+  after insert on dish_ingredients
+  for each row execute function trg_mark_analysis_dirty_via_dish();
+
+drop trigger if exists dish_ingredients_update_dirty on dish_ingredients;
+create trigger dish_ingredients_update_dirty
+  after update on dish_ingredients
+  for each row execute function trg_mark_analysis_dirty_via_dish();
+
+drop trigger if exists dish_ingredients_delete_dirty on dish_ingredients;
+create trigger dish_ingredients_delete_dirty
+  after delete on dish_ingredients
   for each row execute function trg_mark_analysis_dirty_via_dish();
