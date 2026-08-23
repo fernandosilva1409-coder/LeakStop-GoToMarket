@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles } from "lucide-react";
+import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 import StatCard from "../components/ui/StatCard";
 
@@ -22,12 +22,12 @@ export default function Home() {
   };
 
   const TOUR = [
-    { title: t.tour1_title, desc: t.tour1_desc, mockup: <MenuMockup /> },
-    { title: t.tour2_title, desc: t.tour2_desc, mockup: <PurchasesMockup /> },
-    { title: t.tour3_title, desc: t.tour3_desc, mockup: <OverheadMockup /> },
-    { title: t.tour4_title, desc: t.tour4_desc, mockup: <RecommendationsMockup /> },
-    { title: t.tour5_title, desc: t.tour5_desc, mockup: <ChatMockup /> },
-    { title: t.tour6_title, desc: t.tour6_desc, mockup: <WeatherMockup /> },
+    { title: t.tour1_title, desc: t.tour1_desc, mockup: <MenuMockup t={t} /> },
+    { title: t.tour2_title, desc: t.tour2_desc, mockup: <PurchasesMockup t={t} /> },
+    { title: t.tour3_title, desc: t.tour3_desc, mockup: <OverheadMockup t={t} /> },
+    { title: t.tour4_title, desc: t.tour4_desc, mockup: <RecommendationsMockup t={t} /> },
+    { title: t.tour5_title, desc: t.tour5_desc, mockup: <ChatMockup t={t} /> },
+    { title: t.tour6_title, desc: t.tour6_desc, mockup: <WeatherMockup t={t} /> },
   ];
 
   const HOW_STEPS = [
@@ -37,8 +37,13 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface-bg">
-      <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-6">
+    <div className="min-h-screen overflow-hidden bg-surface-bg">
+      <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 left-1/2 h-[520px] w-[920px] -translate-x-1/2 rounded-full bg-gradient-to-br from-brass-light/30 to-brass/20 blur-3xl"
+        />
+      <header className="relative mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-6">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-brass-light to-brass text-heading shadow-soft">
             <ChefHat size={18} strokeWidth={2.2} />
@@ -71,7 +76,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20 pt-12 sm:pt-16">
+      <section className="relative mx-auto max-w-6xl px-6 pb-20 pt-12 sm:pt-16">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="text-center lg:text-left">
             <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-brass-light to-brass px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-wide text-heading shadow-soft">
@@ -108,6 +113,35 @@ export default function Home() {
               <StatCard icon={Percent} label={t.example_kpi3_label} value="68%" tone="good" />
             </div>
             <p className="mt-4 text-center text-xs text-muted">{t.example_note}</p>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <section className="bg-heading py-16">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="mx-auto flex max-w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
+            <Sparkles size={14} className="text-brass-light" />
+            <span className="font-mono text-xs font-semibold uppercase tracking-wide text-brass-light">{t.ai_badge}</span>
+          </div>
+          <h2 className="mt-5 text-center text-3xl font-bold text-white sm:text-4xl">{t.ai_title}</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-base leading-relaxed text-white/70">{t.ai_subtitle}</p>
+
+          <div className="mt-10 grid gap-5 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brass-light to-brass text-heading">
+                <MessageCircle size={18} strokeWidth={2.2} />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-white">{t.ai_chat_title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/70">{t.ai_chat_desc}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brass-light to-brass text-heading">
+                <CloudSun size={18} strokeWidth={2.2} />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-white">{t.ai_weather_title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/70">{t.ai_weather_desc}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -152,6 +186,7 @@ export default function Home() {
           <p className="mt-1 font-mono text-4xl font-bold text-heading">
             49€<span className="text-base font-normal text-muted">{t.pricing_period}</span>
           </p>
+          <p className="mt-1 text-sm font-semibold text-brass">{t.pricing_scope}</p>
           <p className="mt-1 text-sm text-muted">{t.pricing_vat}</p>
           <ul className="mt-6 space-y-2 text-left text-sm text-muted">
             {[t.pricing_feat1, t.pricing_feat2, t.pricing_feat3, t.pricing_feat4].map((item) => (
@@ -185,15 +220,15 @@ function MockupFrame({ children }) {
   return <div className="rounded-2xl bg-surface-card p-5 shadow-soft">{children}</div>;
 }
 
-function MenuMockup() {
+function MenuMockup({ t }) {
   return (
     <MockupFrame>
       <div className="rounded-xl bg-surface-sunken p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-bold text-heading">Bacalhau à Brás</p>
-            <span className="mt-1 inline-block rounded-full bg-brass/10 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-brass">Peixe</span>
-            <p className="mt-1.5 font-mono text-xs text-muted">€12.50 · 6 ingredientes</p>
+            <p className="text-sm font-bold text-heading">{t.mockup_menu_dish}</p>
+            <span className="mt-1 inline-block rounded-full bg-brass/10 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-brass">{t.mockup_menu_category}</span>
+            <p className="mt-1.5 font-mono text-xs text-muted">{t.mockup_menu_meta}</p>
           </div>
           <div className="flex shrink-0 gap-1 text-muted">
             <Pencil size={14} />
@@ -201,30 +236,30 @@ function MenuMockup() {
           </div>
         </div>
         <ul className="mt-3 space-y-0.5 border-t border-surface-border pt-3 font-mono text-[11.5px] text-muted">
-          <li>Bacalhau desfiado — 200g</li>
-          <li>Batata palha — 150g</li>
-          <li>Ovos — 3 unit</li>
+          <li>{t.mockup_menu_ing1}</li>
+          <li>{t.mockup_menu_ing2}</li>
+          <li>{t.mockup_menu_ing3}</li>
         </ul>
       </div>
     </MockupFrame>
   );
 }
 
-function PurchasesMockup() {
+function PurchasesMockup({ t }) {
   return (
     <MockupFrame>
-      <p className="font-mono text-[11px] uppercase tracking-wide text-muted">Bacalhau desfiado</p>
+      <p className="font-mono text-[11px] uppercase tracking-wide text-muted">{t.mockup_purchases_ingredient}</p>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-xl bg-surface-sunken p-3">
-          <p className="font-mono text-[10px] uppercase text-muted">Comprado</p>
+          <p className="font-mono text-[10px] uppercase text-muted">{t.mockup_purchases_bought}</p>
           <p className="mt-1 font-mono text-lg font-bold text-heading">12kg</p>
         </div>
         <div className="rounded-xl bg-surface-sunken p-3">
-          <p className="font-mono text-[10px] uppercase text-muted">Vendido (usado)</p>
+          <p className="font-mono text-[10px] uppercase text-muted">{t.mockup_purchases_used}</p>
           <p className="mt-1 font-mono text-lg font-bold text-heading">9.4kg</p>
         </div>
         <div className="rounded-xl bg-danger-bg p-3">
-          <p className="font-mono text-[10px] uppercase text-danger-text/80">Desperdício</p>
+          <p className="font-mono text-[10px] uppercase text-danger-text/80">{t.mockup_purchases_waste}</p>
           <p className="mt-1 font-mono text-lg font-bold text-danger-text">2.6kg</p>
         </div>
       </div>
@@ -232,11 +267,11 @@ function PurchasesMockup() {
   );
 }
 
-function OverheadMockup() {
+function OverheadMockup({ t }) {
   const rows = [
-    ["Renda / edifício", "800€"],
-    ["Eletricidade", "150€"],
-    ["Mão de obra", "2 400€"],
+    [t.mockup_overhead_rent, "800€"],
+    [t.mockup_overhead_elec, "150€"],
+    [t.mockup_overhead_labor, "2 400€"],
   ];
   return (
     <MockupFrame>
@@ -248,7 +283,7 @@ function OverheadMockup() {
           </div>
         ))}
         <div className="flex items-center justify-between border-t border-surface-border pt-2 font-semibold text-brass">
-          <span>Total / prato</span>
+          <span>{t.mockup_overhead_total}</span>
           <span>1.85€</span>
         </div>
       </div>
@@ -256,11 +291,11 @@ function OverheadMockup() {
   );
 }
 
-function RecommendationsMockup() {
+function RecommendationsMockup({ t }) {
   const rows = [
-    ["Bacalhau à Brás", "Estrela", "bg-good/10 text-good"],
-    ["Sopa do dia", "Cavalo de batalha", "bg-brass/10 text-brass"],
-    ["Menu Degustação", "Fraco desempenho", "bg-danger-bg text-danger-text"],
+    [t.mockup_rec_dish1, t.mockup_rec_class1, "bg-good/10 text-good"],
+    [t.mockup_rec_dish2, t.mockup_rec_class2, "bg-brass/10 text-brass"],
+    [t.mockup_rec_dish3, t.mockup_rec_class3, "bg-danger-bg text-danger-text"],
   ];
   return (
     <MockupFrame>
@@ -276,37 +311,37 @@ function RecommendationsMockup() {
   );
 }
 
-function ChatMockup() {
+function ChatMockup({ t }) {
   return (
     <MockupFrame>
       <div className="space-y-2">
         <div className="ml-auto max-w-[85%] rounded-2xl bg-gradient-to-br from-brass-light to-brass px-3.5 py-2 text-sm font-medium text-heading">
-          Que prato dá mais lucro?
+          {t.mockup_chat_question}
         </div>
         <div className="max-w-[85%] rounded-2xl bg-surface-sunken px-3.5 py-2 text-sm leading-relaxed text-heading">
-          Bacalhau à Brás — 67% de margem e €2.340 de lucro este mês. É o teu melhor prato.
+          {t.mockup_chat_answer}
         </div>
       </div>
     </MockupFrame>
   );
 }
 
-function WeatherMockup() {
+function WeatherMockup({ t }) {
   return (
     <MockupFrame>
       <div className="rounded-xl bg-surface-sunken p-3.5">
         <div className="flex items-center gap-1.5 text-brass">
           <Sparkles size={13} />
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wide">Proposta da semana</span>
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wide">{t.mockup_weather_title}</span>
         </div>
         <p className="mt-1.5 text-xs leading-relaxed text-muted">
-          Quarta e quinta trazem chuva — reforça o Bacalhau à Brás, que vende 40% mais nesses dias.
+          {t.mockup_weather_desc}
         </p>
       </div>
       <div className="mt-3 flex items-center justify-between rounded-xl bg-surface-sunken p-3.5">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Qua, 12 Fev</p>
-          <p className="text-sm font-semibold text-heading">Chuva · 14°</p>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted">{t.mockup_weather_date}</p>
+          <p className="text-sm font-semibold text-heading">{t.mockup_weather_condition}</p>
         </div>
         <span className="rounded-full bg-good/10 px-2.5 py-1 font-mono text-xs font-semibold text-good">+18%</span>
       </div>
