@@ -18,6 +18,8 @@ create table restaurants (
   longitude numeric(9, 6),
   weather_proposal text, -- Haiku-written weekly weather proposal (Weather page), cached ~24h
   weather_proposal_at timestamptz,
+  analysis_cache jsonb, -- cached computeAnalysis() output; analysis_cache_at null = stale, see triggers below
+  analysis_cache_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -307,3 +309,53 @@ begin
   return new_id;
 end;
 $$ language plpgsql security definer;
+
+-- ---------------------------------------------------------------------------
+-- Invalidate the cached analysis (lib/analysisCache.js) whenever any table
+-- computeAnalysis reads from changes. analysis_cache_at = null is the only
+-- "needs recompute" signal the app checks — a DB trigger keeps that correct
+-- for any write path (manual edit, CSV import, a future integration) without
+-- needing every mutation site in the app to remember to invalidate it.
+-- ---------------------------------------------------------------------------
+create or replace function mark_analysis_dirty_for_restaurant(target_restaurant_id uuid)
+returns void as $$
+  update restaurants set analysis_cache_at = null where id = target_restaurant_id;
+$$ language sql security definer;
+
+create or replace function trg_mark_analysis_dirty()
+returns trigger as $$
+begin
+  perform mark_analysis_dirty_for_restaurant(coalesce(NEW.restaurant_id, OLD.restaurant_id));
+  return null;
+end;
+$$ language plpgsql security definer;
+
+create trigger sales_mark_analysis_dirty after insert or update or delete on sales
+  for each row execute function trg_mark_analysis_dirty();
+create trigger purchases_mark_analysis_dirty after insert or update or delete on purchases
+  for each row execute function trg_mark_analysis_dirty();
+create trigger dishes_mark_analysis_dirty after insert or update or delete on dishes
+  for each row execute function trg_mark_analysis_dirty();
+create trigger overhead_mark_analysis_dirty after insert or update or delete on overhead_settings
+  for each row execute function trg_mark_analysis_dirty();
+create trigger excluded_categories_mark_analysis_dirty after insert or update or delete on excluded_categories
+  for each row execute function trg_mark_analysis_dirty();
+
+-- dish_ingredients has no restaurant_id column of its own — resolve it via
+-- the owning dish. (On delete of the dish itself, dish_ingredients rows are
+-- removed by their own FK cascade, which fires this same trigger per row.)
+create or replace function trg_mark_analysis_dirty_via_dish()
+returns trigger as $$
+declare
+  target_id uuid;
+begin
+  select restaurant_id into target_id from dishes where id = coalesce(NEW.dish_id, OLD.dish_id);
+  if target_id is not null then
+    perform mark_analysis_dirty_for_restaurant(target_id);
+  end if;
+  return null;
+end;
+$$ language plpgsql security definer;
+
+create trigger dish_ingredients_mark_analysis_dirty after insert or update or delete on dish_ingredients
+  for each row execute function trg_mark_analysis_dirty_via_dish();
