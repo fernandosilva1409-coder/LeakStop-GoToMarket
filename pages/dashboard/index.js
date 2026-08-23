@@ -80,7 +80,7 @@ export default function Dashboard() {
   let topWaste = [], unmatchedSalesPct = 0, dishCategories = [];
   if (analysis) {
     topWaste = analysis.ingredientRows.filter((r) => r.status === "ok" && r.wasteCost > 0).slice(0, 5);
-    const totalSoldAll = analysis.dishRows.reduce((s, d) => s + d.sold, 0) + analysis.unmatchedSalesQty;
+    const totalSoldAll = analysis.totalSoldMatched + analysis.unmatchedSalesQty;
     unmatchedSalesPct = totalSoldAll > 0 ? (analysis.unmatchedSalesQty / totalSoldAll) * 100 : 0;
     dishCategories = Array.from(new Set(analysis.dishRows.map((d) => catLabel(d.category))));
   }
