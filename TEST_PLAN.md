@@ -61,6 +61,7 @@ around v0.14.1 for the exact approach.
 - [x] Dish sensitivity list — v0.10.0
 - [x] 7-day forecast + temperature-band fallback for rare conditions — v0.12.0
 - [x] AI weekly proposal (cached, correct weekday attribution) — v0.13.0
+- [x] Category filter on sensitivity list + forecast cards, synced between both, default respects Settings category exclusion — v0.15.2
 
 ## Chat with Your Data
 - [x] Tool calls + inline chart rendering — v0.15.0 (now backed by the shared analysis cache)
