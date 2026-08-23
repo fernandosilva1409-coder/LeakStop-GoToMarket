@@ -43,7 +43,7 @@ export default function SettingsPage() {
     (async () => {
       const [dishRows, excludedRows] = await Promise.all([
         fetchAllRows(() => supabase.from("dishes").select("category").eq("restaurant_id", restaurant.id)),
-        fetchAllRows(() => supabase.from("excluded_categories").select("category").eq("restaurant_id", restaurant.id)),
+        fetchAllRows(() => supabase.from("excluded_categories").select("category").eq("restaurant_id", restaurant.id)).catch(() => []),
       ]);
       const distinctCategories = Array.from(new Set((dishRows || []).map((d) => catLabel(d.category)))).sort();
       setCategories(distinctCategories);
