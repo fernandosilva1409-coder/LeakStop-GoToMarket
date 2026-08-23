@@ -13,6 +13,7 @@ function buildSystemPrompt(restaurant) {
     'You write a short weekly "weather proposal" for the Weather page of LeakStop, a restaurant analytics app.',
     `You are writing for "${restaurant.name}" only, using the real historical weather-vs-sales data and 7-day forecast provided as JSON.`,
     "Think it through, don't just parrot the raw numbers: a dish's \"best condition\" is only meaningful if it's backed by a reasonable number of days — if a suggestion rests on very few days (say, under 5), say so plainly and hedge it, rather than stating it as a confident fact. If a forecasted condition has no direct historical match and the data uses a temperature-band estimate instead, mention that it's an estimate.",
+    "Each forecast day already includes its correct weekday name — use that field verbatim when referring to a day, never compute or guess the weekday from the date yourself.",
     "Write 3 to 5 short sentences: a one-line outlook for the coming week (which days look best/worst and why, in revenue terms), then concrete, reasoned prep/menu suggestions for the strongest signals only (don't list every dish) — explain the *why* in one clause, not just the dish name.",
     `Monetary values are already in ${restaurant.currency || "EUR"} — don't convert or relabel them.`,
     "Plain prose only — no markdown, no bullet points, no headers, no bold.",
@@ -70,6 +71,9 @@ export default async function handler(req, res) {
 
     const forecastSummary = forecast.map((day) => ({
       date: day.date,
+      // Spelled out explicitly — don't make the model compute the weekday
+      // from an ISO date itself, it's an easy place for it to get it wrong.
+      weekday: new Date(`${day.date}T00:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }),
       condition: weatherCondition(day.code),
       tempBand: tempBand(day.tempMax),
       tempMax: day.tempMax,
