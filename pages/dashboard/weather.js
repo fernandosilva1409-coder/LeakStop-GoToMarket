@@ -154,7 +154,11 @@ export default function WeatherPage() {
 
           <Card className="mt-6">
             <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.forecastTitle}</p>
-            <p className="mb-4 mt-1 text-sm text-muted">{t.forecastHint}</p>
+            <p className="mt-1 text-sm text-muted">{t.forecastHint}</p>
+            <p className="mb-4 mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold">
+              <span className="text-good">↑ {t.boostLabel}</span>
+              <span className="text-danger-text">↓ {t.trimLabel}</span>
+            </p>
             {forecast.length === 0 ? (
               <p className="text-sm text-muted">{t.forecastEmpty}</p>
             ) : (
