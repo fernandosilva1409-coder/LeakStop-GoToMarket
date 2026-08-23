@@ -14,9 +14,12 @@ import WarningBanner from "../../components/ui/WarningBanner";
 import SimpleBarChart from "../../components/ui/SimpleBarChart";
 import SimplePieChart from "../../components/ui/SimplePieChart";
 
+const RANGES = ["30", "90", "365", "all"];
+
 export default function Dashboard() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
-  const { analysis, loading } = useAnalysis(restaurant);
+  const [range, setRange] = useState("all");
+  const { analysis, loading } = useAnalysis(restaurant, range === "all" ? undefined : Number(range));
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState("");
   const [openingPortal, setOpeningPortal] = useState(false);
@@ -128,7 +131,21 @@ export default function Dashboard() {
         <p className="mt-8 text-sm text-muted">{t.home.loadingData}</p>
       ) : (
         <>
-          <div className="mb-6 mt-8 flex flex-wrap gap-2">
+          <div className="mt-8 flex flex-wrap gap-2">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  range === r ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"
+                }`}
+              >
+                {t.common.rangeLabels[r]}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-6 mt-3 flex flex-wrap gap-2">
             {[
               { key: "overview", label: t.home.tabOverview },
               { key: "waste", label: t.home.tabWaste },

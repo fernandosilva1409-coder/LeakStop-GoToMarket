@@ -7,7 +7,7 @@ import { getDashCopy } from "../../lib/dashboardCopy";
 import { useWeatherAnalytics } from "../../lib/useWeatherAnalytics";
 import { computeWeatherCorrelation, computeDishWeatherSensitivity } from "../../lib/weatherAnalytics";
 import { num } from "../../lib/calculations";
-import { weatherCondition } from "../../lib/weather";
+import { weatherCondition, tempBand } from "../../lib/weather";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import StatCard from "../../components/ui/StatCard";
@@ -167,7 +167,13 @@ export default function WeatherPage() {
                   const cond = weatherCondition(day.code);
                   const Icon = CONDITION_ICONS[cond] || Cloud;
                   const histRow = byCondition.find((r) => r.label === cond);
-                  const pct = histRow ? deltaPct(histRow.avgRevenuePerDay) : null;
+                  // This restaurant's history may have zero days of a forecasted
+                  // condition (e.g. Lisbon rarely logs a "storm" day) — fall back
+                  // to the temperature band, which has denser coverage, rather
+                  // than leaving the day with no signal at all.
+                  const tempRow = !histRow ? byTemperature.find((r) => r.label === tempBand(day.tempMax)) : null;
+                  const deltaSource = histRow || tempRow;
+                  const pct = deltaSource ? deltaPct(deltaSource.avgRevenuePerDay) : null;
                   const boosts = sensitivity.filter((d) => d.best.condition === cond).slice(0, 2);
                   const trims = sensitivity.filter((d) => d.worst.condition === cond).slice(0, 2);
                   return (
@@ -179,9 +185,12 @@ export default function WeatherPage() {
                       <p className="mt-1 text-xs text-heading">{t.conditionLabels[cond] || cond}</p>
                       <p className="text-xs text-muted">{Math.round(day.tempMin)}° / {Math.round(day.tempMax)}°</p>
                       {pct !== null ? (
-                        <p className={`mt-1.5 font-mono text-xs font-semibold ${pct >= 0 ? "text-good" : "text-danger-text"}`}>
-                          {t.vsAverage(pct)}
-                        </p>
+                        <>
+                          <p className={`mt-1.5 font-mono text-xs font-semibold ${pct >= 0 ? "text-good" : "text-danger-text"}`}>
+                            {t.vsAverage(pct)}
+                          </p>
+                          {tempRow && <p className="text-[10px] text-muted">{t.forecastTempFallback}</p>}
+                        </>
                       ) : (
                         <p className="mt-1.5 text-[11px] text-muted">{t.forecastNoHistory}</p>
                       )}

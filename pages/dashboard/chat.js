@@ -174,7 +174,7 @@ export default function ChatPage() {
                     toolInput={m.toolCalls[m.toolCalls.length - 1].input}
                     data={m.toolCalls[m.toolCalls.length - 1].output}
                     currency={currency}
-                    labels={dash.analytics}
+                    labels={{ ...dash.analytics, common: dash.common }}
                   />
                 </div>
                 <button

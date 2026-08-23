@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
   const dash = getDashCopy(lang);
-  const t = dash.analytics;
+  const t = { ...dash.analytics, common: dash.common };
   const currency = restaurant?.currency || "EUR";
 
   useEffect(() => {
