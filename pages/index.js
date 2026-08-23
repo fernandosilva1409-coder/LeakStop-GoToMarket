@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat, Check, Pencil, Trash2, Wallet, Percent } from "lucide-react";
+import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 import StatCard from "../components/ui/StatCard";
 
@@ -26,6 +26,8 @@ export default function Home() {
     { title: t.tour2_title, desc: t.tour2_desc, mockup: <PurchasesMockup /> },
     { title: t.tour3_title, desc: t.tour3_desc, mockup: <OverheadMockup /> },
     { title: t.tour4_title, desc: t.tour4_desc, mockup: <RecommendationsMockup /> },
+    { title: t.tour5_title, desc: t.tour5_desc, mockup: <ChatMockup /> },
+    { title: t.tour6_title, desc: t.tour6_desc, mockup: <WeatherMockup /> },
   ];
 
   const HOW_STEPS = [
@@ -152,7 +154,7 @@ export default function Home() {
           </p>
           <p className="mt-1 text-sm text-muted">{t.pricing_vat}</p>
           <ul className="mt-6 space-y-2 text-left text-sm text-muted">
-            {[t.pricing_feat1, t.pricing_feat2, t.pricing_feat3].map((item) => (
+            {[t.pricing_feat1, t.pricing_feat2, t.pricing_feat3, t.pricing_feat4].map((item) => (
               <li key={item} className="flex items-start gap-2">
                 <Check size={16} className="mt-0.5 shrink-0 text-good" />
                 {item}
@@ -269,6 +271,44 @@ function RecommendationsMockup() {
             <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${classes}`}>{label}</span>
           </div>
         ))}
+      </div>
+    </MockupFrame>
+  );
+}
+
+function ChatMockup() {
+  return (
+    <MockupFrame>
+      <div className="space-y-2">
+        <div className="ml-auto max-w-[85%] rounded-2xl bg-gradient-to-br from-brass-light to-brass px-3.5 py-2 text-sm font-medium text-heading">
+          Que prato dá mais lucro?
+        </div>
+        <div className="max-w-[85%] rounded-2xl bg-surface-sunken px-3.5 py-2 text-sm leading-relaxed text-heading">
+          Bacalhau à Brás — 67% de margem e €2.340 de lucro este mês. É o teu melhor prato.
+        </div>
+      </div>
+    </MockupFrame>
+  );
+}
+
+function WeatherMockup() {
+  return (
+    <MockupFrame>
+      <div className="rounded-xl bg-surface-sunken p-3.5">
+        <div className="flex items-center gap-1.5 text-brass">
+          <Sparkles size={13} />
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-wide">Proposta da semana</span>
+        </div>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted">
+          Quarta e quinta trazem chuva — reforça o Bacalhau à Brás, que vende 40% mais nesses dias.
+        </p>
+      </div>
+      <div className="mt-3 flex items-center justify-between rounded-xl bg-surface-sunken p-3.5">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Qua, 12 Fev</p>
+          <p className="text-sm font-semibold text-heading">Chuva · 14°</p>
+        </div>
+        <span className="rounded-full bg-good/10 px-2.5 py-1 font-mono text-xs font-semibold text-good">+18%</span>
       </div>
     </MockupFrame>
   );
