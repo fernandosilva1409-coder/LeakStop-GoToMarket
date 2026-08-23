@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Globe, CircleDollarSign, ChefHat, Plug, ArrowRight, History, Tags } from "lucide-react";
+import { Globe, CircleDollarSign, ChefHat, Plug, ArrowRight, History, Tags, MapPin } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { LANGUAGES, useDetectedLanguage } from "../../lib/landingCopy";
@@ -11,6 +11,7 @@ import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import Field from "../../components/ui/Field";
 import Select from "../../components/ui/Select";
+import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import pkg from "../../package.json";
 
@@ -26,6 +27,10 @@ export default function SettingsPage() {
   const [categories, setCategories] = useState([]);
   const [excludedCategories, setExcludedCategories] = useState(new Set());
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [city, setCity] = useState("");
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [locationSaved, setLocationSaved] = useState(false);
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -36,6 +41,7 @@ export default function SettingsPage() {
     if (!restaurant) return;
     setLanguage(restaurant.language || "pt");
     setCurrency(restaurant.currency || "EUR");
+    setCity(restaurant.city || "");
   }, [restaurant]);
 
   useEffect(() => {
@@ -62,6 +68,31 @@ export default function SettingsPage() {
       await supabase.from("excluded_categories").insert({ restaurant_id: restaurant.id, category: cat });
       setExcludedCategories((prev) => new Set(prev).add(cat));
     }
+  };
+
+  const handleSaveLocation = async (e) => {
+    e.preventDefault();
+    if (!city.trim() || !restaurant) return;
+    setSavingLocation(true);
+    setLocationError("");
+    setLocationSaved(false);
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city.trim())}&count=1&language=${lang}&format=json`);
+      const body = await res.json();
+      const match = body?.results?.[0];
+      if (!match) { setLocationError(t.locationNotFound); setSavingLocation(false); return; }
+      const displayCity = [match.name, match.country].filter(Boolean).join(", ");
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ city: displayCity, latitude: match.latitude, longitude: match.longitude })
+        .eq("id", restaurant.id);
+      if (error) { setLocationError(error.message); setSavingLocation(false); return; }
+      setCity(displayCity);
+      setLocationSaved(true);
+    } catch (err) {
+      setLocationError(t.locationNotFound);
+    }
+    setSavingLocation(false);
   };
 
   const handleSubmit = async (e) => {
@@ -142,6 +173,27 @@ export default function SettingsPage() {
             })}
           </div>
         )}
+      </Card>
+
+      <Card className="mt-6">
+        <form onSubmit={handleSaveLocation}>
+          <Field label={t.locationTitle} icon={MapPin} hint={t.locationHint}>
+            <Input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder={t.locationPlaceholder}
+            />
+          </Field>
+          {restaurant.city && (
+            <p className="mt-1 text-xs text-muted">{t.locationCity}: {restaurant.city}</p>
+          )}
+          {locationError && <p className="mt-4 text-sm text-danger-text">{locationError}</p>}
+          {locationSaved && <p className="mt-4 text-sm text-good">{dash.common.saved}</p>}
+          <Button type="submit" disabled={savingLocation || !city.trim()} className="mt-4">
+            {savingLocation ? dash.common.saving : dash.common.save}
+          </Button>
+        </form>
       </Card>
 
       <Card className="mt-6">

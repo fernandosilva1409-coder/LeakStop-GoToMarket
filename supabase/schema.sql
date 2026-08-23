@@ -13,6 +13,9 @@ create table restaurants (
   stripe_customer_id text,
   stripe_subscription_id text,
   subscription_status text not null default 'trialing', -- trialing | active | past_due | canceled
+  city text, -- display label for the geocoded location below; weather correlation needs latitude/longitude
+  latitude numeric(9, 6),
+  longitude numeric(9, 6),
   created_at timestamptz not null default now()
 );
 
@@ -148,6 +151,24 @@ create table excluded_categories (
 );
 
 -- ---------------------------------------------------------------------------
+-- Weather daily — cached historical weather for the restaurant's location
+-- (Open-Meteo archive API, free, no key), so "Chat with Your Data" can
+-- correlate sales against weather without re-fetching on every request.
+-- weather_code follows the WMO code table Open-Meteo returns.
+-- ---------------------------------------------------------------------------
+create table weather_daily (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  date date not null,
+  temp_max numeric(5, 1),
+  temp_min numeric(5, 1),
+  precipitation_mm numeric(6, 1),
+  weather_code integer,
+  created_at timestamptz not null default now(),
+  unique (restaurant_id, date)
+);
+
+-- ---------------------------------------------------------------------------
 -- Indexes for the queries the app actually makes
 -- ---------------------------------------------------------------------------
 create index idx_dishes_restaurant on dishes(restaurant_id);
@@ -158,6 +179,7 @@ create index idx_members_user on restaurant_members(user_id);
 create index idx_analytics_widgets_restaurant on analytics_widgets(restaurant_id);
 create index idx_chat_messages_restaurant on chat_messages(restaurant_id, created_at);
 create index idx_excluded_categories_restaurant on excluded_categories(restaurant_id);
+create index idx_weather_daily_restaurant_date on weather_daily(restaurant_id, date);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: a user can only touch rows belonging to a restaurant
@@ -173,6 +195,7 @@ alter table overhead_settings enable row level security;
 alter table analytics_widgets enable row level security;
 alter table chat_messages enable row level security;
 alter table excluded_categories enable row level security;
+alter table weather_daily enable row level security;
 
 -- Helper: is the current user a member of a given restaurant?
 create or replace function is_restaurant_member(target_restaurant_id uuid)
@@ -257,6 +280,13 @@ create policy "members can delete excluded categories" on excluded_categories
   for delete using (is_restaurant_member(restaurant_id));
 create policy "members can delete chat messages" on chat_messages
   for delete using (is_restaurant_member(restaurant_id));
+
+create policy "members can read weather" on weather_daily
+  for select using (is_restaurant_member(restaurant_id));
+create policy "members can write weather" on weather_daily
+  for insert with check (is_restaurant_member(restaurant_id));
+create policy "members can update weather" on weather_daily
+  for update using (is_restaurant_member(restaurant_id));
 
 -- ---------------------------------------------------------------------------
 -- Convenience: when a new restaurant is created, auto-create its owner
