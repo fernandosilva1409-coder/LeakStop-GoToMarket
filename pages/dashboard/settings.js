@@ -92,7 +92,8 @@ export default function SettingsPage() {
       // moved location must invalidate the cache or ensureWeatherData() will
       // see "days already covered" and keep serving the old city's weather.
       if (coordsChanged) {
-        await supabase.from("weather_daily").delete().eq("restaurant_id", restaurant.id);
+        const { error: purgeError } = await supabase.from("weather_daily").delete().eq("restaurant_id", restaurant.id);
+        if (purgeError) console.error("Failed to purge stale weather cache:", purgeError.message);
       }
       setCity(displayCity);
       setLocationSaved(true);
