@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Sun, Cloud, CloudFog, CloudRain, CloudSnow, CloudLightning, TrendingUp, TrendingDown } from "lucide-react";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import { useWeatherAnalytics } from "../../lib/useWeatherAnalytics";
+import { computeWeatherCorrelation, computeDishWeatherSensitivity } from "../../lib/weatherAnalytics";
 import { num } from "../../lib/calculations";
 import { weatherCondition } from "../../lib/weather";
 import PageShell from "../../components/ui/PageShell";
@@ -13,6 +14,13 @@ import StatCard from "../../components/ui/StatCard";
 import SimpleBarChart from "../../components/ui/SimpleBarChart";
 
 const CONDITION_ICONS = { clear: Sun, cloudy: Cloud, fog: CloudFog, rain: CloudRain, snow: CloudSnow, storm: CloudLightning, unknown: Cloud };
+const RANGES = ["30", "90", "365", "all"];
+
+function cutoffDate(rangeDays) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - rangeDays);
+  return d.toISOString().slice(0, 10);
+}
 
 export default function WeatherPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -21,16 +29,29 @@ export default function WeatherPage() {
   const dash = getDashCopy(lang);
   const t = dash.weather;
   const currency = restaurant?.currency || "EUR";
+  const [range, setRange] = useState("all");
 
   const { data, loading } = useWeatherAnalytics(restaurant);
 
+  const { byCondition, byTemperature, sensitivity } = useMemo(() => {
+    if (!data?.sales) return { byCondition: [], byTemperature: [], sensitivity: [] };
+    let sales = data.sales;
+    let weather = data.weather;
+    if (range !== "all") {
+      const cutoff = cutoffDate(Number(range));
+      sales = sales.filter((s) => s.date >= cutoff);
+      weather = weather.filter((w) => w.date >= cutoff);
+    }
+    const correlation = computeWeatherCorrelation(sales, weather, data.dishInfoByName);
+    return { ...correlation, sensitivity: computeDishWeatherSensitivity(sales, weather, data.dishInfoByName) };
+  }, [data, range]);
+
   const overallAvgRevenuePerDay = useMemo(() => {
-    const rows = data?.correlation?.byCondition;
-    if (!rows?.length) return 0;
-    const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
-    const totalDays = rows.reduce((s, r) => s + r.days, 0);
+    if (!byCondition.length) return 0;
+    const totalRevenue = byCondition.reduce((s, r) => s + r.totalRevenue, 0);
+    const totalDays = byCondition.reduce((s, r) => s + r.days, 0);
     return totalDays ? totalRevenue / totalDays : 0;
-  }, [data]);
+  }, [byCondition]);
 
   const deltaPct = (avgRevenuePerDay) =>
     overallAvgRevenuePerDay ? Math.round(((avgRevenuePerDay - overallAvgRevenuePerDay) / overallAvgRevenuePerDay) * 100) : 0;
@@ -38,9 +59,6 @@ export default function WeatherPage() {
   if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
-  const byCondition = data?.correlation?.byCondition || [];
-  const byTemperature = data?.correlation?.byTemperature || [];
-  const sensitivity = data?.sensitivity || [];
   const forecast = data?.forecast || [];
 
   return (
@@ -64,8 +82,22 @@ export default function WeatherPage() {
         </Card>
       ) : (
         <>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                  range === r ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"
+                }`}
+              >
+                {t.rangeLabels[r]}
+              </button>
+            ))}
+          </div>
+
           {byCondition.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <StatCard
                 icon={TrendingUp} tone="good" label={t.bestDayLabel}
                 value={`${t.conditionLabels[byCondition[0].label] || byCondition[0].label} · ${t.vsAverage(deltaPct(byCondition[0].avgRevenuePerDay))}`}
@@ -82,14 +114,14 @@ export default function WeatherPage() {
               <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.conditionChartTitle}</p>
               <SimpleBarChart
                 items={byCondition.map((r) => ({ label: t.conditionLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
-                money currency={currency} valueLabel={t.revenuePerDay}
+                money currency={currency} valueLabel={t.revenuePerDay} categorical
               />
             </Card>
             <Card>
               <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.temperatureChartTitle}</p>
               <SimpleBarChart
                 items={byTemperature.map((r) => ({ label: t.tempBandLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
-                money currency={currency} valueLabel={t.revenuePerDay}
+                money currency={currency} valueLabel={t.revenuePerDay} categorical
               />
             </Card>
           </div>

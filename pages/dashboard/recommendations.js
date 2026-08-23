@@ -8,12 +8,13 @@ import { getDashCopy } from "../../lib/dashboardCopy";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import WarningBanner from "../../components/ui/WarningBanner";
+import SimplePieChart from "../../components/ui/SimplePieChart";
 
 const MATRIX_INFO = {
-  star: { icon: Star, tone: "text-good" },
-  plowhorse: { icon: ArrowUpRight, tone: "text-brass" },
-  puzzle: { icon: Lightbulb, tone: "text-muted" },
-  dog: { icon: ArrowDownRight, tone: "text-danger-text" },
+  star: { icon: Star, tone: "text-good", color: "#4F7A3D" },
+  plowhorse: { icon: ArrowUpRight, tone: "text-brass", color: "#C99A3D" },
+  puzzle: { icon: Lightbulb, tone: "text-muted", color: "#8B897A" },
+  dog: { icon: ArrowDownRight, tone: "text-danger-text", color: "#B5432E" },
 };
 const CLASSES = ["star", "plowhorse", "puzzle", "dog"];
 
@@ -62,6 +63,14 @@ export default function RecommendationsPage() {
 
           {recs.matrix.length > 0 && (
             <section className={recs.tooSmallCategories.length > 0 || recs.noRecipe.length > 0 ? "" : "mt-6"}>
+              <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.matrixSummary}</p>
+              <Card className="mb-6">
+                <SimplePieChart
+                  colors={CLASSES.map((g) => MATRIX_INFO[g].color)}
+                  items={CLASSES.map((g) => ({ label: t.classLabels[g], value: filteredMatrix.filter((d) => d.cls === g).length })).filter((it) => it.value > 0)}
+                />
+              </Card>
+
               <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.matrixTitle}</p>
 
               <div className="mb-3 flex flex-wrap gap-2">

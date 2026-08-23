@@ -31,6 +31,7 @@ export default function WidgetChart({ toolName, toolInput, data, currency, label
         money={normalized.money}
         pct={normalized.pct}
         currency={currency}
+        categorical={normalized.categorical}
         valueLabel={labels.barValueLabels[normalized.valueLabel] || normalized.valueLabel}
       />
     );

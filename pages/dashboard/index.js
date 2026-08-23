@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Wallet, Trash2, Percent, PieChart, HelpCircle } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { supabase } from "../../lib/supabaseClient";
 import { formatMoney, catLabel, formatQty, num } from "../../lib/calculations";
 import { useRestaurant } from "../../lib/useRestaurant";
@@ -12,6 +11,8 @@ import StatCard from "../../components/ui/StatCard";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import WarningBanner from "../../components/ui/WarningBanner";
+import SimpleBarChart from "../../components/ui/SimpleBarChart";
+import SimplePieChart from "../../components/ui/SimplePieChart";
 
 export default function Dashboard() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
@@ -24,6 +25,8 @@ export default function Dashboard() {
   const [dishSearch, setDishSearch] = useState("");
   const [dishCat, setDishCat] = useState("All");
   const [tab, setTab] = useState("overview");
+  const [wasteMetric, setWasteMetric] = useState("cost");
+  const [wasteCount, setWasteCount] = useState("5");
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -77,12 +80,15 @@ export default function Dashboard() {
   const hasSubscription = !!restaurant?.stripe_subscription_id;
   const statusLabel = t.home.subscriptionStatusLabels[restaurant?.subscription_status] || restaurant?.subscription_status;
 
-  let topWaste = [], unmatchedSalesPct = 0, dishCategories = [];
+  let topWaste = [], unmatchedSalesPct = 0, dishCategories = [], categoryRevenue = [];
   if (analysis) {
-    topWaste = analysis.ingredientRows.filter((r) => r.status === "ok" && r.wasteCost > 0).slice(0, 5);
+    const wasteSortKey = wasteMetric === "qty" ? "waste" : "wasteCost";
+    const sortedWaste = analysis.ingredientRows.filter((r) => r.status === "ok" && r[wasteSortKey] > 0).sort((a, b) => b[wasteSortKey] - a[wasteSortKey]);
+    topWaste = wasteCount === "all" ? sortedWaste : sortedWaste.slice(0, Number(wasteCount));
     const totalSoldAll = analysis.totalSoldMatched + analysis.unmatchedSalesQty;
     unmatchedSalesPct = totalSoldAll > 0 ? (analysis.unmatchedSalesQty / totalSoldAll) * 100 : 0;
     dishCategories = Array.from(new Set(analysis.dishRows.map((d) => catLabel(d.category))));
+    categoryRevenue = (analysis.salesStats?.byCategory || []).filter((c) => c.revenue > 0);
   }
 
   const filteredIngredients = analysis
@@ -168,27 +174,47 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {topWaste.length > 0 && (
-                <>
-                  <p className="mb-2 mt-8 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.topWastedIngredients}</p>
-                  <div className="rounded-2xl bg-surface-card p-4 shadow-soft">
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={topWaste} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E7E4DA" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fill: "#8B897A", fontSize: 11, fontFamily: "IBM Plex Mono, monospace" }} axisLine={{ stroke: "#E7E4DA" }} tickLine={false} />
-                        <YAxis tick={{ fill: "#8B897A", fontSize: 11, fontFamily: "IBM Plex Mono, monospace" }} axisLine={{ stroke: "#E7E4DA" }} tickLine={false} />
-                        <Tooltip
-                          contentStyle={{ background: "#FFFFFF", border: "1px solid #E7E4DA", borderRadius: 8, fontFamily: "IBM Plex Mono, monospace", fontSize: 12 }}
-                          labelStyle={{ color: "#26251C" }}
-                          formatter={(v) => formatMoney(v, currency)}
-                        />
-                        <Bar dataKey="wasteCost" radius={[4, 4, 0, 0]}>
-                          {topWaste.map((_, i) => <Cell key={i} fill="#B5432E" />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+              <div className="mb-2 mt-8 flex flex-wrap items-center justify-between gap-3">
+                <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.topWastedIngredients}</p>
+                <div className="flex flex-wrap gap-2">
+                  <div className="flex overflow-hidden rounded-full shadow-soft">
+                    {[["cost", t.home.wasteByMetricCost], ["qty", t.home.wasteByMetricQty]].map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setWasteMetric(key)}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors ${wasteMetric === key ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted hover:text-heading"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                </>
+                  <div className="flex overflow-hidden rounded-full shadow-soft">
+                    {[["5", t.home.wasteTop5], ["10", t.home.wasteTop10], ["all", t.home.wasteTopAll]].map(([key, label]) => (
+                      <button
+                        key={key}
+                        onClick={() => setWasteCount(key)}
+                        className={`px-3 py-1.5 text-xs font-semibold transition-colors ${wasteCount === key ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted hover:text-heading"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {topWaste.length > 0 && (
+                <div className="rounded-2xl bg-surface-card p-4 shadow-soft">
+                  <SimpleBarChart
+                    height={240}
+                    categorical
+                    money={wasteMetric === "cost"}
+                    valueLabel={wasteMetric === "cost" ? t.home.colWasteCost : t.home.colWaste}
+                    currency={currency}
+                    items={topWaste.map((r) => ({
+                      label: wasteMetric === "cost" ? r.name : `${r.name} (${r.unit})`,
+                      value: wasteMetric === "cost" ? r.wasteCost : r.waste,
+                    }))}
+                  />
+                </div>
               )}
             </>
           )}
@@ -265,6 +291,17 @@ export default function Dashboard() {
 
           {tab === "profitability" && (
             <>
+              {categoryRevenue.length > 0 && (
+                <>
+                  <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.revenueByCategory}</p>
+                  <div className="mb-8 rounded-2xl bg-surface-card p-4 shadow-soft">
+                    <SimplePieChart
+                      money currency={currency}
+                      items={categoryRevenue.map((c) => ({ label: c.category, value: c.revenue }))}
+                    />
+                  </div>
+                </>
+              )}
               <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.dishProfitability}</p>
               <Input placeholder={t.home.searchDishes} value={dishSearch} onChange={(e) => setDishSearch(e.target.value)} className="mb-3 w-full max-w-xs" />
               {analysis.dishRows.length > 0 && (

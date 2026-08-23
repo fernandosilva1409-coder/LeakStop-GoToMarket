@@ -3,6 +3,7 @@ import Papa from "papaparse";
 import { Search, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
+import { useAnalysis } from "../../lib/useAnalysis";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import { downloadCsvTemplate, normalizeCsvDate } from "../../lib/csv";
@@ -12,6 +13,7 @@ import CsvImportPanel from "../../components/ui/CsvImportPanel";
 import Field from "../../components/ui/Field";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
+import SimpleBarChart from "../../components/ui/SimpleBarChart";
 
 const PAGE_SIZE = 20;
 const CSV_BATCH_SIZE = 25;
@@ -25,6 +27,7 @@ const TEMPLATE_ROWS = [
 
 export default function SalesPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
+  const { analysis } = useAnalysis(restaurant);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -155,10 +158,24 @@ export default function SalesPage() {
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
 
   const totalPages = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const currency = restaurant?.currency || "EUR";
+  const monthlyTrend = analysis?.salesStats?.byMonth || [];
 
   return (
     <PageShell lang={lang}>
       <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
+
+      {monthlyTrend.length > 1 && (
+        <>
+          <p className="mb-2 mt-6 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.monthlyTrend}</p>
+          <div className="mb-6 rounded-2xl bg-surface-card p-4 shadow-soft">
+            <SimpleBarChart
+              height={180} money currency={currency}
+              items={monthlyTrend.map((m) => ({ label: m.month, value: m.revenue }))}
+            />
+          </div>
+        </>
+      )}
 
       <CsvImportPanel
         title={t.importCsv}
