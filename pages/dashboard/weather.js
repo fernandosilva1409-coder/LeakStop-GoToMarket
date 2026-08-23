@@ -1,0 +1,172 @@
+import { useMemo } from "react";
+import Link from "next/link";
+import { Sun, Cloud, CloudFog, CloudRain, CloudSnow, CloudLightning, TrendingUp, TrendingDown } from "lucide-react";
+import { useRestaurant } from "../../lib/useRestaurant";
+import { useDetectedLanguage } from "../../lib/landingCopy";
+import { getDashCopy } from "../../lib/dashboardCopy";
+import { useWeatherAnalytics } from "../../lib/useWeatherAnalytics";
+import { num } from "../../lib/calculations";
+import { weatherCondition } from "../../lib/weather";
+import PageShell from "../../components/ui/PageShell";
+import Card from "../../components/ui/Card";
+import StatCard from "../../components/ui/StatCard";
+import SimpleBarChart from "../../components/ui/SimpleBarChart";
+
+const CONDITION_ICONS = { clear: Sun, cloudy: Cloud, fog: CloudFog, rain: CloudRain, snow: CloudSnow, storm: CloudLightning, unknown: Cloud };
+
+export default function WeatherPage() {
+  const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
+  const browserLang = useDetectedLanguage();
+  const lang = restaurant?.language || browserLang;
+  const dash = getDashCopy(lang);
+  const t = dash.weather;
+  const currency = restaurant?.currency || "EUR";
+
+  const { data, loading } = useWeatherAnalytics(restaurant);
+
+  const overallAvgRevenuePerDay = useMemo(() => {
+    const rows = data?.correlation?.byCondition;
+    if (!rows?.length) return 0;
+    const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
+    const totalDays = rows.reduce((s, r) => s + r.days, 0);
+    return totalDays ? totalRevenue / totalDays : 0;
+  }, [data]);
+
+  const deltaPct = (avgRevenuePerDay) =>
+    overallAvgRevenuePerDay ? Math.round(((avgRevenuePerDay - overallAvgRevenuePerDay) / overallAvgRevenuePerDay) * 100) : 0;
+
+  if (restaurantLoading) return <p className="p-10 text-muted">{dash.common.loading}</p>;
+  if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
+
+  const byCondition = data?.correlation?.byCondition || [];
+  const byTemperature = data?.correlation?.byTemperature || [];
+  const sensitivity = data?.sensitivity || [];
+  const forecast = data?.forecast || [];
+
+  return (
+    <PageShell lang={lang}>
+      <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
+      <p className="mt-1 text-sm text-muted">{t.subtitle}</p>
+
+      {loading ? (
+        <p className="mt-6 text-sm text-muted">{dash.common.loading}</p>
+      ) : !data?.hasLocation ? (
+        <Card className="mt-6">
+          <p className="font-semibold text-heading">{t.noLocationTitle}</p>
+          <p className="mt-1 text-sm text-muted">{t.noLocationBody}</p>
+          <Link href="/dashboard/settings" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brass hover:text-brass-dark">
+            {t.noLocationCta}
+          </Link>
+        </Card>
+      ) : !data?.hasData ? (
+        <Card className="mt-6">
+          <p className="text-sm text-muted">{t.notEnoughData}</p>
+        </Card>
+      ) : (
+        <>
+          {byCondition.length > 0 && (
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatCard
+                icon={TrendingUp} tone="good" label={t.bestDayLabel}
+                value={`${t.conditionLabels[byCondition[0].label] || byCondition[0].label} · ${t.vsAverage(deltaPct(byCondition[0].avgRevenuePerDay))}`}
+              />
+              <StatCard
+                icon={TrendingDown} tone="danger" label={t.worstDayLabel}
+                value={`${t.conditionLabels[byCondition[byCondition.length - 1].label] || byCondition[byCondition.length - 1].label} · ${t.vsAverage(deltaPct(byCondition[byCondition.length - 1].avgRevenuePerDay))}`}
+              />
+            </div>
+          )}
+
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.conditionChartTitle}</p>
+              <SimpleBarChart
+                items={byCondition.map((r) => ({ label: t.conditionLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
+                money currency={currency} valueLabel={t.revenuePerDay}
+              />
+            </Card>
+            <Card>
+              <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.temperatureChartTitle}</p>
+              <SimpleBarChart
+                items={byTemperature.map((r) => ({ label: t.tempBandLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
+                money currency={currency} valueLabel={t.revenuePerDay}
+              />
+            </Card>
+          </div>
+
+          <Card className="mt-6">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.sensitivityTitle}</p>
+            <p className="mb-4 mt-1 text-sm text-muted">{t.sensitivityHint}</p>
+            {sensitivity.length === 0 ? (
+              <p className="text-sm text-muted">{t.sensitivityEmpty}</p>
+            ) : (
+              <div className="space-y-2">
+                {sensitivity.map((d) => (
+                  <div key={d.dish} className="flex items-center justify-between gap-3 rounded-xl bg-surface-sunken px-3.5 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-heading">{d.dish}</p>
+                      <p className="text-xs text-muted">
+                        {t.bestIn} {t.conditionLabels[d.best.condition] || d.best.condition} ({num(d.best.avgUnitsPerDay, 1)} {t.unitsPerDay})
+                        {" · "}
+                        {t.worstIn} {t.conditionLabels[d.worst.condition] || d.worst.condition} ({num(d.worst.avgUnitsPerDay, 1)} {t.unitsPerDay})
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-brass/10 px-2.5 py-1 font-mono text-xs font-semibold text-brass">
+                      -{num(d.swingPct, 0)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card className="mt-6">
+            <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.forecastTitle}</p>
+            <p className="mb-4 mt-1 text-sm text-muted">{t.forecastHint}</p>
+            {forecast.length === 0 ? (
+              <p className="text-sm text-muted">{t.forecastEmpty}</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+                {forecast.map((day) => {
+                  const cond = weatherCondition(day.code);
+                  const Icon = CONDITION_ICONS[cond] || Cloud;
+                  const histRow = byCondition.find((r) => r.label === cond);
+                  const pct = histRow ? deltaPct(histRow.avgRevenuePerDay) : null;
+                  const boosts = sensitivity.filter((d) => d.best.condition === cond).slice(0, 2);
+                  const trims = sensitivity.filter((d) => d.worst.condition === cond).slice(0, 2);
+                  return (
+                    <div key={day.date} className="rounded-xl bg-surface-sunken p-3">
+                      <p className="font-mono text-[11px] uppercase tracking-wide text-muted">
+                        {new Date(`${day.date}T00:00:00`).toLocaleDateString(lang, { weekday: "short", day: "numeric", month: "short" })}
+                      </p>
+                      <Icon size={22} className="mt-1.5 text-brass" />
+                      <p className="mt-1 text-xs text-heading">{t.conditionLabels[cond] || cond}</p>
+                      <p className="text-xs text-muted">{Math.round(day.tempMin)}° / {Math.round(day.tempMax)}°</p>
+                      {pct !== null ? (
+                        <p className={`mt-1.5 font-mono text-xs font-semibold ${pct >= 0 ? "text-good" : "text-danger-text"}`}>
+                          {t.vsAverage(pct)}
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 text-[11px] text-muted">{t.forecastNoHistory}</p>
+                      )}
+                      {boosts.length > 0 && (
+                        <p className="mt-2 truncate text-[11px] text-good" title={`${t.boostLabel}: ${boosts.map((d) => d.dish).join(", ")}`}>
+                          ↑ {boosts.map((d) => d.dish).join(", ")}
+                        </p>
+                      )}
+                      {trims.length > 0 && (
+                        <p className="truncate text-[11px] text-danger-text" title={`${t.trimLabel}: ${trims.map((d) => d.dish).join(", ")}`}>
+                          ↓ {trims.map((d) => d.dish).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+    </PageShell>
+  );
+}
