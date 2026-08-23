@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Globe, CircleDollarSign, ChefHat, Plug, ArrowRight, History } from "lucide-react";
+import { Globe, CircleDollarSign, ChefHat, Plug, ArrowRight, History, Tags } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRestaurant } from "../../lib/useRestaurant";
 import { LANGUAGES, useDetectedLanguage } from "../../lib/landingCopy";
-import { CURRENCY_SYMBOLS } from "../../lib/calculations";
+import { CURRENCY_SYMBOLS, catLabel } from "../../lib/calculations";
+import { fetchAllRows } from "../../lib/supabaseUtils";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
@@ -22,6 +23,9 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [excludedCategories, setExcludedCategories] = useState(new Set());
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -33,6 +37,32 @@ export default function SettingsPage() {
     setLanguage(restaurant.language || "pt");
     setCurrency(restaurant.currency || "EUR");
   }, [restaurant]);
+
+  useEffect(() => {
+    if (!restaurant) return;
+    (async () => {
+      const [dishRows, excludedRows] = await Promise.all([
+        fetchAllRows(() => supabase.from("dishes").select("category").eq("restaurant_id", restaurant.id)),
+        fetchAllRows(() => supabase.from("excluded_categories").select("category").eq("restaurant_id", restaurant.id)),
+      ]);
+      const distinctCategories = Array.from(new Set((dishRows || []).map((d) => catLabel(d.category)))).sort();
+      setCategories(distinctCategories);
+      setExcludedCategories(new Set((excludedRows || []).map((r) => r.category)));
+      setCategoriesLoading(false);
+    })();
+  }, [restaurant]);
+
+  const toggleCategory = async (cat) => {
+    if (!restaurant) return;
+    const isExcluded = excludedCategories.has(cat);
+    if (isExcluded) {
+      await supabase.from("excluded_categories").delete().eq("restaurant_id", restaurant.id).eq("category", cat);
+      setExcludedCategories((prev) => { const next = new Set(prev); next.delete(cat); return next; });
+    } else {
+      await supabase.from("excluded_categories").insert({ restaurant_id: restaurant.id, category: cat });
+      setExcludedCategories((prev) => new Set(prev).add(cat));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,6 +108,40 @@ export default function SettingsPage() {
             {saving ? dash.common.saving : dash.common.save}
           </Button>
         </form>
+      </Card>
+
+      <Card className="mt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Tags size={15} className="text-brass" />
+          <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.categoriesTitle}</p>
+        </div>
+        <p className="mb-4 text-sm text-muted">{t.categoriesHint}</p>
+        {categoriesLoading ? (
+          <p className="text-sm text-muted">{dash.common.loading}</p>
+        ) : categories.length === 0 ? (
+          <p className="text-sm text-muted">{t.categoriesEmpty}</p>
+        ) : (
+          <div className="space-y-2">
+            {categories.map((cat) => {
+              const included = !excludedCategories.has(cat);
+              return (
+                <div key={cat} className="flex items-center justify-between gap-3 rounded-xl bg-surface-sunken px-3.5 py-2.5">
+                  <span className="text-sm font-medium text-heading">{cat}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(cat)}
+                    title={included ? t.categoryIncluded : t.categoryExcluded}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${included ? "bg-brass" : "bg-surface-border"}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${included ? "translate-x-5" : "translate-x-0.5"}`}
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       <Card className="mt-6">

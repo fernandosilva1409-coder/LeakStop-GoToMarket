@@ -131,6 +131,23 @@ create table chat_messages (
 );
 
 -- ---------------------------------------------------------------------------
+-- Excluded categories — menu categories the restaurant has opted out of
+-- margin/profitability analytics for (Dashboard KPIs, dish profitability
+-- table, Recommendations matrix). Ingredient-level waste and raw sales are
+-- unaffected — a category's dishes still sell and still consume ingredients,
+-- they just don't get judged by the food-cost/margin model, which doesn't
+-- fit things like bottled drinks well (overhead-per-plate on a bottle of
+-- water produces a meaningless negative "margin").
+-- ---------------------------------------------------------------------------
+create table excluded_categories (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  category text not null,
+  created_at timestamptz not null default now(),
+  unique (restaurant_id, category)
+);
+
+-- ---------------------------------------------------------------------------
 -- Indexes for the queries the app actually makes
 -- ---------------------------------------------------------------------------
 create index idx_dishes_restaurant on dishes(restaurant_id);
@@ -140,6 +157,7 @@ create index idx_sales_restaurant_date on sales(restaurant_id, date);
 create index idx_members_user on restaurant_members(user_id);
 create index idx_analytics_widgets_restaurant on analytics_widgets(restaurant_id);
 create index idx_chat_messages_restaurant on chat_messages(restaurant_id, created_at);
+create index idx_excluded_categories_restaurant on excluded_categories(restaurant_id);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: a user can only touch rows belonging to a restaurant
@@ -154,6 +172,7 @@ alter table sales enable row level security;
 alter table overhead_settings enable row level security;
 alter table analytics_widgets enable row level security;
 alter table chat_messages enable row level security;
+alter table excluded_categories enable row level security;
 
 -- Helper: is the current user a member of a given restaurant?
 create or replace function is_restaurant_member(target_restaurant_id uuid)
@@ -229,6 +248,13 @@ create policy "members can write chat messages" on chat_messages
   for insert with check (is_restaurant_member(restaurant_id));
 create policy "members can update chat messages" on chat_messages
   for update using (is_restaurant_member(restaurant_id));
+
+create policy "members can read excluded categories" on excluded_categories
+  for select using (is_restaurant_member(restaurant_id));
+create policy "members can write excluded categories" on excluded_categories
+  for insert with check (is_restaurant_member(restaurant_id));
+create policy "members can delete excluded categories" on excluded_categories
+  for delete using (is_restaurant_member(restaurant_id));
 create policy "members can delete chat messages" on chat_messages
   for delete using (is_restaurant_member(restaurant_id));
 
