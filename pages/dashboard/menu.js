@@ -26,6 +26,61 @@ const TEMPLATE_ROWS = [
 
 const EMPTY_FORM = { id: null, name: "", category: "", price: "", prepTime: "", ingredients: [{ name: "", qty: "", unit: "g" }] };
 
+function DishForm({ t, dash, title, form, setForm, updateIngredient, addIngredientRow, removeIngredientRow, onSubmit, onCancel, saving, formError, submitLabel }) {
+  return (
+    <form onSubmit={onSubmit}>
+      <p className="font-semibold text-heading">{title}</p>
+      <div className="mt-3 flex flex-wrap gap-3">
+        <Field label={t.dishName} className="min-w-[160px] flex-[2]">
+          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </Field>
+        <Field label={t.category} className="min-w-[120px] flex-1">
+          <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        </Field>
+        <Field label={t.price} className="w-24">
+          <Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+        </Field>
+        <Field label={t.prepTime} className="w-36">
+          <Input type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} />
+        </Field>
+      </div>
+
+      <p className="mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-muted">{t.ingredients}</p>
+      {form.ingredients.map((ing, idx) => (
+        <div key={idx} className="mb-1.5 flex gap-2">
+          <Input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className="flex-[2]" />
+          <Input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className="w-24" />
+          <Select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className="w-24">
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="ml">ml</option>
+            <option value="l">l</option>
+            <option value="unit">unit</option>
+          </Select>
+          <button type="button" onClick={() => removeIngredientRow(idx)} className="rounded-xl px-2 text-danger-text hover:bg-danger-bg">
+            <X size={16} />
+          </button>
+        </div>
+      ))}
+      <button type="button" onClick={addIngredientRow} className="mt-1 flex items-center gap-1 text-sm font-semibold text-good hover:text-good/80">
+        <Plus size={14} /> {t.addIngredient}
+      </button>
+
+      {formError && <p className="mt-2 text-sm text-danger-text">{formError}</p>}
+      <div className="mt-4 flex gap-2">
+        <Button type="submit" disabled={saving}>
+          {saving ? dash.common.saving : submitLabel}
+        </Button>
+        {onCancel && (
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            {dash.common.cancel}
+          </Button>
+        )}
+      </div>
+    </form>
+  );
+}
+
 export default function MenuPage() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
   const [dishes, setDishes] = useState([]);
@@ -211,58 +266,15 @@ export default function MenuPage() {
         onDownloadTemplate={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
       />
 
-      <Card className="mt-6">
-        <form onSubmit={handleSubmit}>
-          <p className="font-semibold text-heading">{form.id ? t.editDish : t.newDish}</p>
-          <div className="mt-3 flex flex-wrap gap-3">
-            <Field label={t.dishName} className="min-w-[160px] flex-[2]">
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            </Field>
-            <Field label={t.category} className="min-w-[120px] flex-1">
-              <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-            </Field>
-            <Field label={t.price} className="w-24">
-              <Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-            </Field>
-            <Field label={t.prepTime} className="w-36">
-              <Input type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} />
-            </Field>
-          </div>
-
-          <p className="mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-muted">{t.ingredients}</p>
-          {form.ingredients.map((ing, idx) => (
-            <div key={idx} className="mb-1.5 flex gap-2">
-              <Input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className="flex-[2]" />
-              <Input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className="w-24" />
-              <Select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className="w-24">
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-                <option value="ml">ml</option>
-                <option value="l">l</option>
-                <option value="unit">unit</option>
-              </Select>
-              <button type="button" onClick={() => removeIngredientRow(idx)} className="rounded-xl px-2 text-danger-text hover:bg-danger-bg">
-                <X size={16} />
-              </button>
-            </div>
-          ))}
-          <button type="button" onClick={addIngredientRow} className="mt-1 flex items-center gap-1 text-sm font-semibold text-good hover:text-good/80">
-            <Plus size={14} /> {t.addIngredient}
-          </button>
-
-          {formError && <p className="mt-2 text-sm text-danger-text">{formError}</p>}
-          <div className="mt-4 flex gap-2">
-            <Button type="submit" disabled={saving}>
-              {saving ? dash.common.saving : form.id ? t.saveChanges : t.addDish}
-            </Button>
-            {form.id && (
-              <Button type="button" variant="secondary" onClick={resetForm}>
-                {dash.common.cancel}
-              </Button>
-            )}
-          </div>
-        </form>
-      </Card>
+      {!form.id && (
+        <Card className="mt-6">
+          <DishForm
+            t={t} dash={dash} title={t.newDish} form={form} setForm={setForm}
+            updateIngredient={updateIngredient} addIngredientRow={addIngredientRow} removeIngredientRow={removeIngredientRow}
+            onSubmit={handleSubmit} saving={saving} formError={formError} submitLabel={t.addDish}
+          />
+        </Card>
+      )}
 
       {loading ? (
         <p className="mt-6 text-sm text-muted">{t.loadingDishes}</p>
@@ -270,38 +282,49 @@ export default function MenuPage() {
         <p className="mt-6 text-sm text-muted">{t.noDishesYet}</p>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {dishes.map((d) => (
-            <Card key={d.id}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-heading">{d.name}</p>
-                  {d.category && (
-                    <span className="mt-1 inline-block rounded-full bg-brass/10 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-brass">
-                      {d.category}
-                    </span>
-                  )}
+          {dishes.map((d) =>
+            form.id === d.id ? (
+              <Card key={d.id}>
+                <DishForm
+                  t={t} dash={dash} title={t.editDish} form={form} setForm={setForm}
+                  updateIngredient={updateIngredient} addIngredientRow={addIngredientRow} removeIngredientRow={removeIngredientRow}
+                  onSubmit={handleSubmit} onCancel={resetForm} saving={saving} formError={formError} submitLabel={t.saveChanges}
+                />
+              </Card>
+            ) : (
+              <Card key={d.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-heading">{d.name}</p>
+                    {d.category && (
+                      <span className="mt-1 inline-block rounded-full bg-brass/10 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-brass">
+                        {d.category}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <button type="button" onClick={() => startEdit(d)} className="rounded-lg p-1 text-muted hover:bg-surface-sunken hover:text-heading">
+                      <Pencil size={14} />
+                    </button>
+                    <button type="button" onClick={() => handleDelete(d)} className="rounded-lg p-1 text-danger-text hover:bg-danger-bg">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  <button type="button" onClick={() => startEdit(d)} className="rounded-lg p-1 text-muted hover:bg-surface-sunken hover:text-heading">
-                    <Pencil size={14} />
-                  </button>
-                  <button type="button" onClick={() => handleDelete(d)} className="rounded-lg p-1 text-danger-text hover:bg-danger-bg">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-              <p className="mt-2 font-mono text-xs text-muted">
-                {formatMoney(d.price, restaurant.currency)} · {t.ingredientCount(d.ingredients.length)}
-              </p>
-              {d.ingredients.length > 0 && (
-                <ul className="mt-3 space-y-0.5 border-t border-surface-border pt-3 font-mono text-[11.5px] text-muted">
-                  {d.ingredients.map((ing) => (
-                    <li key={ing.id}>{ing.name} — {ing.qty}{ing.unit}</li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          ))}
+                <p className="mt-2 font-mono text-xs text-muted">
+                  {formatMoney(d.price, restaurant.currency)}
+                  {d.prep_time ? ` · ${t.prepTimeMin(d.prep_time)}` : ""} · {t.ingredientCount(d.ingredients.length)}
+                </p>
+                {d.ingredients.length > 0 && (
+                  <ul className="mt-3 space-y-0.5 border-t border-surface-border pt-3 font-mono text-[11.5px] text-muted">
+                    {d.ingredients.map((ing) => (
+                      <li key={ing.id}>{ing.name} — {ing.qty}{ing.unit}</li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            )
+          )}
         </div>
       )}
     </PageShell>
