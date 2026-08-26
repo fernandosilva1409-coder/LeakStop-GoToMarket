@@ -178,36 +178,6 @@ export default function WeatherPage() {
             </Card>
           )}
 
-          {byCondition.length > 0 && (
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <StatCard
-                icon={TrendingUp} tone="good" label={t.bestDayLabel}
-                value={`${t.conditionLabels[byCondition[0].label] || byCondition[0].label} · ${t.vsAverage(deltaPct(byCondition[0].avgRevenuePerDay))}`}
-              />
-              <StatCard
-                icon={TrendingDown} tone="danger" label={t.worstDayLabel}
-                value={`${t.conditionLabels[byCondition[byCondition.length - 1].label] || byCondition[byCondition.length - 1].label} · ${t.vsAverage(deltaPct(byCondition[byCondition.length - 1].avgRevenuePerDay))}`}
-              />
-            </div>
-          )}
-
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card>
-              <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.conditionChartTitle}</p>
-              <SimpleBarChart
-                items={byCondition.map((r) => ({ label: t.conditionLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
-                money currency={currency} valueLabel={t.revenuePerDay} categorical
-              />
-            </Card>
-            <Card>
-              <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.temperatureChartTitle}</p>
-              <SimpleBarChart
-                items={byTemperature.map((r) => ({ label: t.tempBandLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
-                money currency={currency} valueLabel={t.revenuePerDay} categorical
-              />
-            </Card>
-          </div>
-
           <Card className="mt-6">
             <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.sensitivityTitle}</p>
             <p className="mt-1 text-sm text-muted">{t.sensitivityHint}</p>
@@ -294,6 +264,36 @@ export default function WeatherPage() {
               </div>
             )}
           </Card>
+
+          {byCondition.length > 0 && (
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatCard
+                icon={TrendingUp} tone="good" label={t.bestDayLabel}
+                value={`${t.conditionLabels[byCondition[0].label] || byCondition[0].label} · ${t.vsAverage(deltaPct(byCondition[0].avgRevenuePerDay))}`}
+              />
+              <StatCard
+                icon={TrendingDown} tone="danger" label={t.worstDayLabel}
+                value={`${t.conditionLabels[byCondition[byCondition.length - 1].label] || byCondition[byCondition.length - 1].label} · ${t.vsAverage(deltaPct(byCondition[byCondition.length - 1].avgRevenuePerDay))}`}
+              />
+            </div>
+          )}
+
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.conditionChartTitle}</p>
+              <SimpleBarChart
+                items={byCondition.map((r) => ({ label: t.conditionLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
+                money currency={currency} valueLabel={t.revenuePerDay} categorical
+              />
+            </Card>
+            <Card>
+              <p className="mb-4 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.temperatureChartTitle}</p>
+              <SimpleBarChart
+                items={byTemperature.map((r) => ({ label: t.tempBandLabels[r.label] || r.label, value: r.avgRevenuePerDay }))}
+                money currency={currency} valueLabel={t.revenuePerDay} categorical
+              />
+            </Card>
+          </div>
         </>
       )}
     </PageShell>
