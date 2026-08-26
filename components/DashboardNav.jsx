@@ -15,16 +15,21 @@ export default function DashboardNav({ lang = "pt" }) {
     supabase.auth.getSession().then(({ data: { session } }) => setUserEmail(session?.user?.email || ""));
   }, []);
 
+  // Ordered by decision-making weight and daily usage, most to least: the
+  // overview and the day-to-day decision tools (weather proposal, chat,
+  // recommendations, analytics) come first; then the operational data-entry
+  // pages (sales, purchases, menu, overhead) that feed them; account-level
+  // admin pages (support, settings) that are touched rarely go last.
   const LINKS = [
     { href: "/dashboard", label: t.dashboard, icon: LayoutDashboard },
-    { href: "/dashboard/menu", label: t.menu, icon: UtensilsCrossed },
-    { href: "/dashboard/purchases", label: t.purchases, icon: Package },
-    { href: "/dashboard/sales", label: t.sales, icon: Receipt },
-    { href: "/dashboard/overhead", label: t.overhead, icon: Calculator },
-    { href: "/dashboard/recommendations", label: t.recommendations, icon: Lightbulb },
-    { href: "/dashboard/chat", label: t.chat, icon: MessageCircle },
-    { href: "/dashboard/analytics", label: t.analytics, icon: BarChart3 },
     { href: "/dashboard/weather", label: t.weather, icon: CloudSun },
+    { href: "/dashboard/chat", label: t.chat, icon: MessageCircle },
+    { href: "/dashboard/recommendations", label: t.recommendations, icon: Lightbulb },
+    { href: "/dashboard/analytics", label: t.analytics, icon: BarChart3 },
+    { href: "/dashboard/sales", label: t.sales, icon: Receipt },
+    { href: "/dashboard/purchases", label: t.purchases, icon: Package },
+    { href: "/dashboard/menu", label: t.menu, icon: UtensilsCrossed },
+    { href: "/dashboard/overhead", label: t.overhead, icon: Calculator },
     { href: "/dashboard/support", label: t.support, icon: LifeBuoy },
     { href: "/dashboard/settings", label: t.settings, icon: Settings },
   ];
