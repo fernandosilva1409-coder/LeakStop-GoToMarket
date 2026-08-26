@@ -26,31 +26,31 @@ const TEMPLATE_ROWS = [
 
 const EMPTY_FORM = { id: null, name: "", category: "", price: "", prepTime: "", ingredients: [{ name: "", qty: "", unit: "g" }] };
 
-function DishForm({ t, dash, title, form, setForm, updateIngredient, addIngredientRow, removeIngredientRow, onSubmit, onCancel, saving, formError, submitLabel }) {
+function DishForm({ t, dash, title, form, setForm, updateIngredient, addIngredientRow, removeIngredientRow, onSubmit, onCancel, saving, formError, submitLabel, compact }) {
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} className="min-w-0">
       <p className="font-semibold text-heading">{title}</p>
       <div className="mt-3 flex flex-wrap gap-3">
-        <Field label={t.dishName} className="min-w-[160px] flex-[2]">
+        <Field label={t.dishName} className={compact ? "w-full" : "min-w-[160px] flex-[2]"}>
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </Field>
-        <Field label={t.category} className="min-w-[120px] flex-1">
+        <Field label={t.category} className={compact ? "min-w-[100px] flex-1" : "min-w-[120px] flex-1"}>
           <Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
         </Field>
-        <Field label={t.price} className="w-24">
+        <Field label={t.price} className={compact ? "w-20" : "w-24"}>
           <Input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
         </Field>
-        <Field label={t.prepTime} className="w-36">
+        <Field label={t.prepTime} className={compact ? "w-24" : "w-36"}>
           <Input type="number" step="0.5" value={form.prepTime} onChange={(e) => setForm({ ...form, prepTime: e.target.value })} />
         </Field>
       </div>
 
       <p className="mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-muted">{t.ingredients}</p>
       {form.ingredients.map((ing, idx) => (
-        <div key={idx} className="mb-1.5 flex gap-2">
-          <Input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className="flex-[2]" />
-          <Input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className="w-24" />
-          <Select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className="w-24">
+        <div key={idx} className="mb-1.5 flex flex-wrap gap-2">
+          <Input placeholder={t.ingredientPlaceholder} value={ing.name} onChange={(e) => updateIngredient(idx, "name", e.target.value)} className={compact ? "min-w-[100px] flex-1" : "flex-[2]"} />
+          <Input placeholder={t.qty} type="number" step="0.001" value={ing.qty} onChange={(e) => updateIngredient(idx, "qty", e.target.value)} className="w-20" />
+          <Select value={ing.unit} onChange={(e) => updateIngredient(idx, "unit", e.target.value)} className="w-20">
             <option value="g">g</option>
             <option value="kg">kg</option>
             <option value="ml">ml</option>
@@ -284,15 +284,16 @@ export default function MenuPage() {
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {dishes.map((d) =>
             form.id === d.id ? (
-              <Card key={d.id}>
+              <Card key={d.id} className="min-w-0">
                 <DishForm
                   t={t} dash={dash} title={t.editDish} form={form} setForm={setForm}
                   updateIngredient={updateIngredient} addIngredientRow={addIngredientRow} removeIngredientRow={removeIngredientRow}
                   onSubmit={handleSubmit} onCancel={resetForm} saving={saving} formError={formError} submitLabel={t.saveChanges}
+                  compact
                 />
               </Card>
             ) : (
-              <Card key={d.id}>
+              <Card key={d.id} className="min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-heading">{d.name}</p>
