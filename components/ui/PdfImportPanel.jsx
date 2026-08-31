@@ -40,46 +40,66 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [doneMessage, setDoneMessage] = useState("");
+  const [fileProgress, setFileProgress] = useState(null); // { current, total }
 
   const columns = type === "purchase" ? PURCHASE_COLUMNS : SALE_COLUMNS;
   const table = type === "purchase" ? "purchases" : "sales";
   const today = new Date().toISOString().slice(0, 10);
 
-  const handleFile = async (file) => {
-    if (!file) return;
+  const extractOne = async (file, session) => {
+    const pdfBase64 = await fileToBase64(file);
+    const res = await fetch("/api/import/extract-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ restaurantId, type, pdfBase64 }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error || copy.pdfReadError);
+
+    const date = body.date || today;
+    return (body.items || []).map((it) =>
+      type === "purchase"
+        ? {
+            item: it.item || "", quantity: it.quantity ?? "", unit: it.unit || "un",
+            unit_price: it.unit_price ?? "", date, supplier: body.supplier || "",
+          }
+        : { dish_name: it.dish_name || "", quantity: it.quantity ?? "", date }
+    );
+  };
+
+  // Files are extracted one at a time (not concurrently) so each PDF gets
+  // its own Claude call cleanly and a failure on one doesn't abort the
+  // others — their rows just accumulate into a single combined preview.
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
     setError("");
     setDoneMessage("");
     setStatus("working");
-    try {
-      const pdfBase64 = await fileToBase64(file);
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/import/extract-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ restaurantId, type, pdfBase64 }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || copy.pdfReadError);
+    const { data: { session } } = await supabase.auth.getSession();
 
-      const date = body.date || today;
-      const rows = (body.items || []).map((it) =>
-        type === "purchase"
-          ? {
-              item: it.item || "", quantity: it.quantity ?? "", unit: it.unit || "un",
-              unit_price: it.unit_price ?? "", date, supplier: body.supplier || "",
-            }
-          : { dish_name: it.dish_name || "", quantity: it.quantity ?? "", date }
-      );
-      if (!rows.length) {
-        setError(copy.pdfNoItems);
-        setStatus("idle");
-      } else {
-        setItems(rows);
-        setStatus("preview");
+    const allRows = [];
+    const failedNames = [];
+    for (let i = 0; i < files.length; i++) {
+      setFileProgress({ current: i + 1, total: files.length });
+      try {
+        const rows = await extractOne(files[i], session);
+        allRows.push(...rows);
+      } catch {
+        failedNames.push(files[i].name);
       }
-    } catch (err) {
-      setError(err.message || copy.pdfReadError);
+    }
+    setFileProgress(null);
+
+    if (failedNames.length) {
+      setError(`${copy.pdfReadError} ${failedNames.join(", ")}`);
+    }
+    if (!allRows.length) {
+      if (!failedNames.length) setError(copy.pdfNoItems);
       setStatus("idle");
+    } else {
+      setItems((prev) => [...prev, ...allRows]);
+      setStatus("preview");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -134,9 +154,14 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
           onClick={() => fileInputRef.current?.click()}
           disabled={status === "working" || status === "importing"}
         >
-          {status === "working" ? copy.extractingPdf : copy.choosePdfFile}
+          {status === "working"
+            ? `${copy.extractingPdf}${fileProgress ? ` (${fileProgress.current}/${fileProgress.total})` : ""}`
+            : copy.choosePdfFile}
         </Button>
-        <input ref={fileInputRef} type="file" accept="application/pdf" onChange={(e) => handleFile(e.target.files?.[0])} className="hidden" />
+        <input
+          ref={fileInputRef} type="file" accept="application/pdf" multiple
+          onChange={(e) => handleFiles(e.target.files)} className="hidden"
+        />
         {doneMessage && <p className="text-sm text-good">{doneMessage}</p>}
       </div>
       {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
