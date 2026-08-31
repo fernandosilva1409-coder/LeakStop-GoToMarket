@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { Upload, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import Button from "./Button";
@@ -56,8 +57,9 @@ function signature(type, row) {
 // Claude extracts structured line items server-side, the user reviews and
 // corrects them here, then confirms before anything is written — extraction
 // mistakes on financial data must be caught before they hit cost/margin math.
-export default function PdfImportPanel({ type, restaurantId, copy, onImported, className = "" }) {
+export default function PdfImportPanel({ type, restaurantId, copy, onImported, onBusyChange, className = "" }) {
   const fileInputRef = useRef(null);
+  const router = useRouter();
   const [status, setStatus] = useState("idle"); // idle | working | preview | importing
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
@@ -68,6 +70,43 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
   const columns = type === "purchase" ? PURCHASE_COLUMNS : SALE_COLUMNS;
   const table = type === "purchase" ? "purchases" : "sales";
   const today = new Date().toISOString().slice(0, 10);
+
+  // Extraction/insert in flight, or extracted rows sitting unconfirmed in
+  // preview — all three are work that a navigation away would silently
+  // discard, since this component (and its local state) simply unmounts.
+  const busy = status === "working" || status === "importing" || (status === "preview" && items.length > 0);
+
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy]);
+
+  // Guards against losing in-flight/unconfirmed PDF import work: a full
+  // page unload (tab close, reload, typed URL) via beforeunload, and an
+  // in-app route change (clicking another item in the dashboard menu) via
+  // Next.js router events — both would otherwise unmount this component
+  // and silently drop everything without the confirm-before-insert step.
+  useEffect(() => {
+    if (!busy) return undefined;
+
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    const handleRouteChangeStart = (url) => {
+      if (url === router.asPath) return;
+      if (window.confirm(copy.confirmLeaveImport)) return;
+      router.events.emit("routeChangeError");
+      // eslint-disable-next-line no-throw-literal
+      throw "routeChange aborted by PdfImportPanel guard";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    router.events.on("routeChangeStart", handleRouteChangeStart);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      router.events.off("routeChangeStart", handleRouteChangeStart);
+    };
+  }, [busy, router, copy.confirmLeaveImport]);
 
   const extractOne = async (file, session, hash) => {
     const pdfBase64 = await fileToBase64(file);

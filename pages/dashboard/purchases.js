@@ -42,6 +42,7 @@ export default function PurchasesPage() {
   const [csvStatus, setCsvStatus] = useState("");
   const [csvProgress, setCsvProgress] = useState(null);
   const [importTab, setImportTab] = useState("csv");
+  const [pdfImportBusy, setPdfImportBusy] = useState(false);
   const fileInputRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -193,7 +194,11 @@ export default function PurchasesPage() {
 
       <div className="mt-6 flex gap-2">
         <button
-          type="button" onClick={() => setImportTab("csv")}
+          type="button"
+          onClick={() => {
+            if (importTab === "pdf" && pdfImportBusy && !window.confirm(dash.common.confirmLeaveImport)) return;
+            setImportTab("csv");
+          }}
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${importTab === "csv" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"}`}
         >
           {t.tabCsv}
@@ -224,6 +229,7 @@ export default function PurchasesPage() {
           restaurantId={restaurant.id}
           copy={{ ...dash.common, ...t }}
           onImported={() => { setPage(0); loadPage(restaurant.id, 0, search); }}
+          onBusyChange={setPdfImportBusy}
           className="mt-6"
         />
       )}
