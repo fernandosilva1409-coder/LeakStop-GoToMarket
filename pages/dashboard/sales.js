@@ -117,20 +117,23 @@ export default function SalesPage() {
       header: true, skipEmptyLines: true,
       complete: async ({ data, errors }) => {
         if (errors.length) { setCsvStatus(`${t.csvReadError} ${errors[0].message}`); return; }
-        await importCsvRows(data);
+        await importCsvRows(data, file.name);
       },
     });
   };
 
   // Expected columns: dish_name, quantity, date — one row per sale.
-  const importCsvRows = async (csvRows) => {
+  const importCsvRows = async (csvRows, sourceFilename) => {
     const skipped = [];
     const payload = csvRows
       .filter((r) => (r.dish_name || "").trim() && r.date)
       .map((r) => {
         const date = normalizeCsvDate(r.date);
         if (!date) skipped.push(r.dish_name);
-        return { restaurant_id: restaurant.id, dish_name: r.dish_name.trim(), quantity: Number(r.quantity) || 0, date };
+        return {
+          restaurant_id: restaurant.id, dish_name: r.dish_name.trim(), quantity: Number(r.quantity) || 0, date,
+          source_filename: sourceFilename || null,
+        };
       })
       .filter((r) => r.date);
 

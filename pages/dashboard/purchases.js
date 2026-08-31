@@ -126,13 +126,13 @@ export default function PurchasesPage() {
       header: true, skipEmptyLines: true,
       complete: async ({ data, errors }) => {
         if (errors.length) { setCsvStatus(`${t.csvReadError} ${errors[0].message}`); return; }
-        await importCsvRows(data);
+        await importCsvRows(data, file.name);
       },
     });
   };
 
   // Expected columns: item, quantity, unit, unit_price, date, supplier — one row per purchase.
-  const importCsvRows = async (csvRows) => {
+  const importCsvRows = async (csvRows, sourceFilename) => {
     const skipped = [];
     const payload = csvRows
       .filter((r) => (r.item || "").trim() && r.date)
@@ -143,6 +143,7 @@ export default function PurchasesPage() {
           restaurant_id: restaurant.id, item: r.item.trim(), quantity: Number(r.quantity) || 0,
           unit: (r.unit || "g").trim(), unit_price: Number(r.unit_price) || 0, date,
           supplier: (r.supplier || "").trim() || null,
+          source_filename: sourceFilename || null,
         };
       })
       .filter((r) => r.date);
