@@ -5,6 +5,7 @@ import Button from "./Button";
 import Input from "./Input";
 
 const BATCH_SIZE = 25;
+const PREVIEW_PAGE_SIZE = 20;
 
 const PURCHASE_COLUMNS = [
   { key: "item", labelKey: "item", type: "text" },
@@ -53,6 +54,7 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
   const [error, setError] = useState("");
   const [doneMessage, setDoneMessage] = useState("");
   const [fileProgress, setFileProgress] = useState(null); // { current, total }
+  const [previewPage, setPreviewPage] = useState(0);
 
   const columns = type === "purchase" ? PURCHASE_COLUMNS : SALE_COLUMNS;
   const table = type === "purchase" ? "purchases" : "sales";
@@ -137,6 +139,7 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
       const combined = [...items, ...newRows];
       const flagged = await markDuplicates(combined);
       setItems(flagged);
+      setPreviewPage(0);
       setStatus("preview");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -152,6 +155,7 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
     setItems([]);
     setError("");
     setStatus("idle");
+    setPreviewPage(0);
   };
 
   const handleConfirm = async () => {
@@ -175,6 +179,7 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
       setDoneMessage(copy.importedCount(payloads.length));
       setItems([]);
       setStatus("idle");
+      setPreviewPage(0);
       onImported?.();
     } catch (err) {
       setError(err.message || copy.pdfReadError);
@@ -204,56 +209,86 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
       </div>
       {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
 
-      {status === "preview" && items.length > 0 && (
-        <div className="mt-4">
-          {items.some((r) => r._duplicate) && (
-            <p className="mb-2 text-sm text-warn-text">{copy.duplicatesWarning(items.filter((r) => r._duplicate).length)}</p>
-          )}
-          <div className="overflow-x-auto rounded-xl border border-surface-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-surface-border bg-surface-sunken text-left font-mono text-[11px] uppercase tracking-wide text-muted">
-                  {columns.map((c) => <th key={c.key} className="px-2 py-2">{copy[c.labelKey] || c.key}</th>)}
-                  <th className="px-2 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row, idx) => (
-                  <tr key={idx} className={`border-b border-surface-border/60 last:border-0 ${row._duplicate ? "bg-warn-bg/40" : ""}`}>
-                    {columns.map((c, ci) => (
-                      <td key={c.key} className="px-2 py-1.5">
-                        {ci === 0 && row._duplicate && (
-                          <span className="mb-1 block w-fit rounded-full bg-warn-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-warn-text">
-                            {copy.possibleDuplicate}
-                          </span>
-                        )}
-                        <Input
-                          type={c.type} value={row[c.key]} step={c.type === "number" ? "0.0001" : undefined}
-                          onChange={(e) => updateRow(idx, c.key, e.target.value)}
-                          className="w-full min-w-[100px] text-xs"
-                        />
-                      </td>
-                    ))}
-                    <td className="px-2 py-1.5">
-                      <button type="button" onClick={() => removeRow(idx)} className="rounded p-1 text-danger-text hover:bg-danger-bg">
-                        <X size={14} />
-                      </button>
-                    </td>
+      {status === "preview" && items.length > 0 && (() => {
+        // Rows needing a look — duplicates — surface first; the sort is
+        // stable so order within each group (and across pages) stays put.
+        const sortedEntries = items
+          .map((row, idx) => ({ row, idx }))
+          .sort((a, b) => Number(!!b.row._duplicate) - Number(!!a.row._duplicate));
+        const totalPages = Math.max(Math.ceil(sortedEntries.length / PREVIEW_PAGE_SIZE), 1);
+        const safePage = Math.min(previewPage, totalPages - 1);
+        const pageEntries = sortedEntries.slice(safePage * PREVIEW_PAGE_SIZE, safePage * PREVIEW_PAGE_SIZE + PREVIEW_PAGE_SIZE);
+
+        return (
+          <div className="mt-4">
+            {items.some((r) => r._duplicate) && (
+              <p className="mb-2 text-sm text-warn-text">{copy.duplicatesWarning(items.filter((r) => r._duplicate).length)}</p>
+            )}
+            <div className="overflow-x-auto rounded-xl border border-surface-border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-surface-border bg-surface-sunken text-left font-mono text-[11px] uppercase tracking-wide text-muted">
+                    {columns.map((c) => <th key={c.key} className="px-2 py-2">{copy[c.labelKey] || c.key}</th>)}
+                    <th className="px-2 py-2" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {pageEntries.map(({ row, idx }) => (
+                    <tr key={idx} className={`border-b border-surface-border/60 last:border-0 ${row._duplicate ? "bg-warn-bg/40" : ""}`}>
+                      {columns.map((c, ci) => (
+                        <td key={c.key} className="px-2 py-1.5">
+                          {ci === 0 && row._duplicate && (
+                            <span className="mb-1 block w-fit rounded-full bg-warn-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-warn-text">
+                              {copy.possibleDuplicate}
+                            </span>
+                          )}
+                          <Input
+                            type={c.type} value={row[c.key]} step={c.type === "number" ? "0.0001" : undefined}
+                            onChange={(e) => updateRow(idx, c.key, e.target.value)}
+                            className="w-full min-w-[100px] text-xs"
+                          />
+                        </td>
+                      ))}
+                      <td className="px-2 py-1.5">
+                        <button type="button" onClick={() => removeRow(idx)} className="rounded p-1 text-danger-text hover:bg-danger-bg">
+                          <X size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button" disabled={safePage === 0} onClick={() => setPreviewPage((p) => Math.max(p - 1, 0))}
+                  className="rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium text-heading hover:border-brass disabled:opacity-40"
+                >
+                  {copy.previous}
+                </button>
+                <span className="font-mono text-xs text-muted">{copy.pageInfo(safePage + 1, totalPages, sortedEntries.length)}</span>
+                <button
+                  type="button" disabled={safePage + 1 >= totalPages} onClick={() => setPreviewPage((p) => Math.min(p + 1, totalPages - 1))}
+                  className="rounded-lg border border-surface-border px-3 py-1.5 text-sm font-medium text-heading hover:border-brass disabled:opacity-40"
+                >
+                  {copy.next}
+                </button>
+              </div>
+            )}
+
+            <div className="mt-3 flex gap-2">
+              <Button type="button" onClick={handleConfirm} disabled={status === "importing"}>
+                {status === "importing" ? copy.importing : copy.confirmImport}
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleCancel} disabled={status === "importing"}>
+                {copy.cancel}
+              </Button>
+            </div>
           </div>
-          <div className="mt-3 flex gap-2">
-            <Button type="button" onClick={handleConfirm} disabled={status === "importing"}>
-              {status === "importing" ? copy.importing : copy.confirmImport}
-            </Button>
-            <Button type="button" variant="secondary" onClick={handleCancel} disabled={status === "importing"}>
-              {copy.cancel}
-            </Button>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
