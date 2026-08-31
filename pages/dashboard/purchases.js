@@ -297,6 +297,7 @@ export default function PurchasesPage() {
                   <th className="px-4 py-3 text-right">{t.colQty}</th>
                   <th className="px-4 py-3 text-right">{t.unitPrice}</th>
                   <th className="px-4 py-3">{t.supplier}</th>
+                  <th className="px-4 py-3">{t.colFile}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -308,6 +309,7 @@ export default function PurchasesPage() {
                     <td className="px-4 py-3 text-right font-mono text-muted">{r.quantity} {r.unit}</td>
                     <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(r.unit_price, restaurant.currency)}</td>
                     <td className="px-4 py-3 text-muted">{r.supplier || "—"}</td>
+                    <td className="px-4 py-3 max-w-[140px] truncate font-mono text-xs text-muted" title={r.source_filename || ""}>{r.source_filename || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => startEdit(r)} className="rounded-lg p-1.5 text-muted hover:bg-surface-sunken hover:text-heading">

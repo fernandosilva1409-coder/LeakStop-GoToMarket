@@ -67,6 +67,7 @@ create table purchases (
   unit_price numeric(10, 4) not null default 0,
   date date not null,
   supplier text,
+  source_filename text, -- name of the PDF this row was extracted from, if any (see pdf_imports)
   created_at timestamptz not null default now()
 );
 
@@ -79,7 +80,27 @@ create table sales (
   dish_name text not null, -- kept as text, not a dish_id FK: sales can reference names that don't (yet) match a menu item
   quantity numeric(10, 2) not null default 0,
   date date not null,
+  source_filename text, -- name of the PDF this row was extracted from, if any (see pdf_imports)
   created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
+-- PDF imports — one row per PDF a user has successfully imported into
+-- purchases/sales, keyed by a content hash (not filename alone, which can
+-- repeat or be renamed) so re-selecting an already-imported invoice is
+-- detected before spending a Claude call on it, and every purchase/sale row
+-- can be traced back to the file it came from via source_filename above.
+-- ---------------------------------------------------------------------------
+create table pdf_imports (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  kind text not null check (kind in ('purchase', 'sale')),
+  filename text not null,
+  file_hash text not null, -- SHA-256 of the file bytes, hex-encoded
+  row_count integer not null default 0,
+  imported_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (restaurant_id, kind, file_hash)
 );
 
 -- ---------------------------------------------------------------------------
@@ -200,6 +221,7 @@ alter table analytics_widgets enable row level security;
 alter table chat_messages enable row level security;
 alter table excluded_categories enable row level security;
 alter table weather_daily enable row level security;
+alter table pdf_imports enable row level security;
 
 -- Helper: is the current user a member of a given restaurant?
 create or replace function is_restaurant_member(target_restaurant_id uuid)
@@ -254,6 +276,11 @@ create policy "members can update sales" on sales
   for update using (is_restaurant_member(restaurant_id));
 create policy "members can delete sales" on sales
   for delete using (is_restaurant_member(restaurant_id));
+
+create policy "members can read pdf imports" on pdf_imports
+  for select using (is_restaurant_member(restaurant_id));
+create policy "members can write pdf imports" on pdf_imports
+  for insert with check (is_restaurant_member(restaurant_id));
 
 create policy "members can read overhead" on overhead_settings
   for select using (is_restaurant_member(restaurant_id));

@@ -265,6 +265,7 @@ export default function SalesPage() {
                   <th className="px-4 py-3">{t.colDate}</th>
                   <th className="px-4 py-3">{t.colDish}</th>
                   <th className="px-4 py-3 text-right">{t.colQuantity}</th>
+                  <th className="px-4 py-3">{t.colFile}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -274,6 +275,7 @@ export default function SalesPage() {
                     <td className="px-4 py-3 font-mono text-muted">{r.date}</td>
                     <td className="px-4 py-3 font-medium text-heading">{r.dish_name}</td>
                     <td className="px-4 py-3 text-right font-mono text-muted">{r.quantity}</td>
+                    <td className="px-4 py-3 max-w-[140px] truncate font-mono text-xs text-muted" title={r.source_filename || ""}>{r.source_filename || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button type="button" onClick={() => startEdit(r)} className="rounded-lg p-1.5 text-muted hover:bg-surface-sunken hover:text-heading">

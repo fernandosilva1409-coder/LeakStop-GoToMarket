@@ -31,6 +31,15 @@ function fileToBase64(file) {
   });
 }
 
+// Content hash, not filename — filenames repeat or get renamed, but the
+// same bytes always hash the same, so this is what actually identifies
+// "this exact PDF was already imported" reliably.
+async function hashFile(file) {
+  const buf = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 const norm = (v) => String(v ?? "").trim().toLowerCase();
 const numNorm = (v) => String(Number(v) || 0);
 
@@ -60,7 +69,7 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
   const table = type === "purchase" ? "purchases" : "sales";
   const today = new Date().toISOString().slice(0, 10);
 
-  const extractOne = async (file, session) => {
+  const extractOne = async (file, session, hash) => {
     const pdfBase64 = await fileToBase64(file);
     const res = await fetch("/api/import/extract-pdf", {
       method: "POST",
@@ -71,13 +80,14 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
     if (!res.ok) throw new Error(body.error || copy.pdfReadError);
 
     const date = body.date || today;
+    const sourceFile = { name: file.name, hash };
     return (body.items || []).map((it) =>
       type === "purchase"
         ? {
             item: it.item || "", quantity: it.quantity ?? "", unit: it.unit || "un",
-            unit_price: it.unit_price ?? "", date, supplier: body.supplier || "",
+            unit_price: it.unit_price ?? "", date, supplier: body.supplier || "", _sourceFile: sourceFile,
           }
-        : { dish_name: it.dish_name || "", quantity: it.quantity ?? "", date }
+        : { dish_name: it.dish_name || "", quantity: it.quantity ?? "", date, _sourceFile: sourceFile }
     );
   };
 
@@ -108,6 +118,9 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
   // Files are extracted one at a time (not concurrently) so each PDF gets
   // its own Claude call cleanly and a failure on one doesn't abort the
   // others — their rows just accumulate into a single combined preview.
+  // Before spending a Claude call, each file's content hash is checked
+  // against pdf_imports — an exact re-selection of an already-imported PDF
+  // is skipped outright rather than re-extracted and merely flagged.
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
@@ -118,10 +131,20 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
 
     const newRows = [];
     const failedNames = [];
+    const skippedNotes = [];
     for (let i = 0; i < files.length; i++) {
       setFileProgress({ current: i + 1, total: files.length });
       try {
-        const rows = await extractOne(files[i], session);
+        const hash = await hashFile(files[i]);
+        const { data: existing } = await supabase
+          .from("pdf_imports").select("created_at")
+          .eq("restaurant_id", restaurantId).eq("kind", type).eq("file_hash", hash)
+          .maybeSingle();
+        if (existing) {
+          skippedNotes.push(copy.fileAlreadyImported(files[i].name, new Date(existing.created_at).toLocaleDateString()));
+          continue;
+        }
+        const rows = await extractOne(files[i], session, hash);
         newRows.push(...rows);
       } catch {
         failedNames.push(files[i].name);
@@ -129,11 +152,13 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
     }
     setFileProgress(null);
 
-    if (failedNames.length) {
-      setError(`${copy.pdfReadError} ${failedNames.join(", ")}`);
-    }
+    const notes = [];
+    if (failedNames.length) notes.push(`${copy.pdfReadError} ${failedNames.join(", ")}`);
+    if (skippedNotes.length) notes.push(...skippedNotes);
+    if (notes.length) setError(notes.join(" "));
+
     if (!newRows.length) {
-      if (!failedNames.length) setError(copy.pdfNoItems);
+      if (!notes.length) setError(copy.pdfNoItems);
       setStatus("idle");
     } else {
       const combined = [...items, ...newRows];
@@ -167,8 +192,12 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
             restaurant_id: restaurantId, item: row.item, quantity: Number(row.quantity) || 0,
             unit: row.unit || "un", unit_price: Number(row.unit_price) || 0, date: row.date,
             supplier: row.supplier ? row.supplier.trim() || null : null,
+            source_filename: row._sourceFile?.name || null,
           }
-        : { restaurant_id: restaurantId, dish_name: row.dish_name, quantity: Number(row.quantity) || 0, date: row.date }
+        : {
+            restaurant_id: restaurantId, dish_name: row.dish_name, quantity: Number(row.quantity) || 0, date: row.date,
+            source_filename: row._sourceFile?.name || null,
+          }
     );
     try {
       for (let i = 0; i < payloads.length; i += BATCH_SIZE) {
@@ -176,6 +205,21 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
         const { error: insertError } = await supabase.from(table).insert(chunk);
         if (insertError) throw insertError;
       }
+
+      // Register every distinct source PDF as imported, so re-selecting it
+      // later gets skipped instead of re-processed and re-inserted.
+      const fileMap = new Map();
+      items.forEach((row) => { if (row._sourceFile) fileMap.set(row._sourceFile.hash, row._sourceFile.name); });
+      if (fileMap.size) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const importRows = Array.from(fileMap.entries()).map(([hash, name]) => ({
+          restaurant_id: restaurantId, kind: type, filename: name, file_hash: hash,
+          row_count: items.filter((r) => r._sourceFile?.hash === hash).length,
+          imported_by: session?.user?.id || null,
+        }));
+        await supabase.from("pdf_imports").upsert(importRows, { onConflict: "restaurant_id,kind,file_hash", ignoreDuplicates: true });
+      }
+
       setDoneMessage(copy.importedCount(payloads.length));
       setItems([]);
       setStatus("idle");
