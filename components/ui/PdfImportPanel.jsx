@@ -30,6 +30,18 @@ function fileToBase64(file) {
   });
 }
 
+const norm = (v) => String(v ?? "").trim().toLowerCase();
+const numNorm = (v) => String(Number(v) || 0);
+
+// Same item/dish + date + (supplier/quantity/price as applicable) — a
+// tolerant-enough signature to catch "uploaded this invoice twice" without
+// false-flagging every plain-quantity purchase against every other.
+function signature(type, row) {
+  return type === "purchase"
+    ? [norm(row.item), row.date, norm(row.supplier), numNorm(row.quantity), numNorm(row.unit_price)].join("||")
+    : [norm(row.dish_name), row.date, numNorm(row.quantity)].join("||");
+}
+
 // Shared by the Purchases and Sales pages: upload an invoice/report PDF,
 // Claude extracts structured line items server-side, the user reviews and
 // corrects them here, then confirms before anything is written — extraction
@@ -67,6 +79,30 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
     );
   };
 
+  // Flags rows that are either repeated within the combined batch itself
+  // (e.g. the same PDF selected twice) or match something already saved for
+  // this restaurant (e.g. re-uploading an invoice already imported earlier)
+  // — a warning, never an automatic block, since a genuine repeat purchase
+  // on the same day looks identical to a duplicate upload.
+  const markDuplicates = async (rows) => {
+    const dates = rows.map((r) => r.date).filter(Boolean);
+    if (!dates.length) return rows.map((r) => ({ ...r, _duplicate: false }));
+    const minDate = dates.reduce((a, b) => (a < b ? a : b));
+    const maxDate = dates.reduce((a, b) => (a > b ? a : b));
+    const selectCols = type === "purchase" ? "item, date, supplier, quantity, unit_price" : "dish_name, date, quantity";
+    const { data: existingRows } = await supabase
+      .from(table).select(selectCols).eq("restaurant_id", restaurantId).gte("date", minDate).lte("date", maxDate);
+    const existingSigs = new Set((existingRows || []).map((r) => signature(type, r)));
+
+    const counts = {};
+    rows.forEach((r) => { const s = signature(type, r); counts[s] = (counts[s] || 0) + 1; });
+
+    return rows.map((r) => {
+      const s = signature(type, r);
+      return { ...r, _duplicate: counts[s] > 1 || existingSigs.has(s) };
+    });
+  };
+
   // Files are extracted one at a time (not concurrently) so each PDF gets
   // its own Claude call cleanly and a failure on one doesn't abort the
   // others — their rows just accumulate into a single combined preview.
@@ -78,13 +114,13 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
     setStatus("working");
     const { data: { session } } = await supabase.auth.getSession();
 
-    const allRows = [];
+    const newRows = [];
     const failedNames = [];
     for (let i = 0; i < files.length; i++) {
       setFileProgress({ current: i + 1, total: files.length });
       try {
         const rows = await extractOne(files[i], session);
-        allRows.push(...rows);
+        newRows.push(...rows);
       } catch {
         failedNames.push(files[i].name);
       }
@@ -94,11 +130,13 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
     if (failedNames.length) {
       setError(`${copy.pdfReadError} ${failedNames.join(", ")}`);
     }
-    if (!allRows.length) {
+    if (!newRows.length) {
       if (!failedNames.length) setError(copy.pdfNoItems);
       setStatus("idle");
     } else {
-      setItems((prev) => [...prev, ...allRows]);
+      const combined = [...items, ...newRows];
+      const flagged = await markDuplicates(combined);
+      setItems(flagged);
       setStatus("preview");
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -168,6 +206,9 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
 
       {status === "preview" && items.length > 0 && (
         <div className="mt-4">
+          {items.some((r) => r._duplicate) && (
+            <p className="mb-2 text-sm text-warn-text">{copy.duplicatesWarning(items.filter((r) => r._duplicate).length)}</p>
+          )}
           <div className="overflow-x-auto rounded-xl border border-surface-border">
             <table className="w-full text-sm">
               <thead>
@@ -178,9 +219,14 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, c
               </thead>
               <tbody>
                 {items.map((row, idx) => (
-                  <tr key={idx} className="border-b border-surface-border/60 last:border-0">
-                    {columns.map((c) => (
+                  <tr key={idx} className={`border-b border-surface-border/60 last:border-0 ${row._duplicate ? "bg-warn-bg/40" : ""}`}>
+                    {columns.map((c, ci) => (
                       <td key={c.key} className="px-2 py-1.5">
+                        {ci === 0 && row._duplicate && (
+                          <span className="mb-1 block w-fit rounded-full bg-warn-bg px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-warn-text">
+                            {copy.possibleDuplicate}
+                          </span>
+                        )}
                         <Input
                           type={c.type} value={row[c.key]} step={c.type === "number" ? "0.0001" : undefined}
                           onChange={(e) => updateRow(idx, c.key, e.target.value)}
