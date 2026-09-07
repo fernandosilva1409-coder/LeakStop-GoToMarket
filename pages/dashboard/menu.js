@@ -11,6 +11,7 @@ import { fetchAllRows } from "../../lib/supabaseUtils";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import CsvImportPanel from "../../components/ui/CsvImportPanel";
+import MenuPdfImportPanel from "../../components/ui/MenuPdfImportPanel";
 import Field from "../../components/ui/Field";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -90,6 +91,8 @@ export default function MenuPage() {
   const [formError, setFormError] = useState("");
   const [csvStatus, setCsvStatus] = useState("");
   const [csvProgress, setCsvProgress] = useState(null);
+  const [importTab, setImportTab] = useState("csv");
+  const [pdfImportBusy, setPdfImportBusy] = useState(false);
   const fileInputRef = useRef(null);
 
   const browserLang = useDetectedLanguage();
@@ -254,17 +257,47 @@ export default function MenuPage() {
     <PageShell lang={lang}>
       <h1 className="text-2xl font-bold text-heading">{t.title}</h1>
 
-      <CsvImportPanel
-        title={t.importCsv}
-        columnsHint={t.csvColumns}
-        chooseFileLabel={t.chooseFile}
-        downloadLabel={t.downloadTemplate}
-        status={csvStatus}
-        progress={csvProgress}
-        fileInputRef={fileInputRef}
-        onFile={handleCsvFile}
-        onDownloadTemplate={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
-      />
+      <div className="mt-6 flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (importTab === "pdf" && pdfImportBusy && !window.confirm(dash.common.confirmLeaveImport)) return;
+            setImportTab("csv");
+          }}
+          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${importTab === "csv" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"}`}
+        >
+          {t.tabCsv}
+        </button>
+        <button
+          type="button" onClick={() => setImportTab("pdf")}
+          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${importTab === "pdf" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "bg-surface-card text-muted shadow-soft hover:text-heading"}`}
+        >
+          {t.tabPdf}
+        </button>
+      </div>
+
+      {importTab === "csv" ? (
+        <CsvImportPanel
+          title={t.importCsv}
+          columnsHint={t.csvColumns}
+          chooseFileLabel={t.chooseFile}
+          downloadLabel={t.downloadTemplate}
+          status={csvStatus}
+          progress={csvProgress}
+          fileInputRef={fileInputRef}
+          onFile={handleCsvFile}
+          onDownloadTemplate={() => downloadCsvTemplate("leakstop-menu-template.csv", TEMPLATE_HEADER, TEMPLATE_ROWS)}
+        />
+      ) : (
+        <MenuPdfImportPanel
+          restaurantId={restaurant.id}
+          existingDishes={dishes}
+          copy={{ ...dash.common, ...t }}
+          onImported={() => loadDishes(restaurant.id)}
+          onBusyChange={setPdfImportBusy}
+          className="mt-6"
+        />
+      )}
 
       {!form.id && (
         <Card className="mt-6">
