@@ -189,6 +189,17 @@ export default function Dashboard() {
         .sort((a, b) => b.sold * b.price - a.sold * a.price)
     : [];
 
+  // Dishes with at least one ingredient that isn't contributing to cost —
+  // no matching purchase, or a purchase in an incompatible unit — surfaced
+  // proactively instead of only discoverable by opening each dish by hand.
+  const attentionDishes = analysis
+    ? analysis.dishRows
+        .filter((d) => d.hasRecipe)
+        .map((d) => ({ dish: d, problems: (d.ingredientBreakdown || []).filter((i) => i.status !== "matched") }))
+        .filter((a) => a.problems.length > 0)
+    : [];
+  const attentionIngredientCount = attentionDishes.reduce((s, a) => s + a.problems.length, 0);
+
   return (
     <PageShell lang={lang}>
       <h1 className="text-2xl font-bold text-heading">{restaurant?.name}</h1>
@@ -419,6 +430,25 @@ export default function Dashboard() {
                     <p className="mt-2 text-sm leading-relaxed text-heading">{overheadExplanation}</p>
                   )}
                 </Card>
+              )}
+
+              {attentionDishes.length > 0 && (
+                <WarningBanner>
+                  <p className="font-semibold">{t.home.attentionTitle(attentionIngredientCount, attentionDishes.length)}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {attentionDishes.map(({ dish, problems }) => (
+                      <button
+                        key={dish.id}
+                        type="button"
+                        onClick={() => { setDishSearch(""); setDishCat("All"); toggleDishDetail(dish); }}
+                        title={problems.map((p) => p.name).join(", ")}
+                        className="rounded-full bg-warn-bg/70 px-2.5 py-1 text-xs font-semibold text-warn-text hover:bg-warn-bg"
+                      >
+                        {dish.name} ({problems.length})
+                      </button>
+                    ))}
+                  </div>
+                </WarningBanner>
               )}
 
               <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.dishProfitability}</p>
