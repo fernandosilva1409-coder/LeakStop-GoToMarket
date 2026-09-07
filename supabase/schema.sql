@@ -53,7 +53,11 @@ create table dish_ingredients (
   id uuid primary key default gen_random_uuid(),
   dish_id uuid not null references dishes(id) on delete cascade,
   name text not null,
-  qty numeric(10, 3) not null default 0,
+  -- 6dp, not 3: ingredients bought as a whole priced package ("un") are
+  -- often recorded as a small fraction of that package per dish (e.g.
+  -- 0.00015 "un" of a 10L oil drum for a pasta dough) — numeric(10,3)
+  -- silently rounded those to 0, zeroing that ingredient's cost everywhere.
+  qty numeric(14, 6) not null default 0,
   unit text not null default 'g' -- g | kg | ml | l | unit | ...
 );
 
