@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { Upload, X, Trash2 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { resolveProductIds } from "../../lib/resolveProducts";
 import Button from "./Button";
 import Input from "./Input";
 
@@ -176,6 +177,9 @@ export default function MenuPdfImportPanel({ restaurantId, existingDishes, copy,
     setStatus("importing");
     setError("");
     const toImport = dishes.filter((d) => d._include);
+    const allIngredients = [];
+    toImport.forEach((d) => d.ingredients.forEach((ing) => { if (ing._include && ing.name.trim()) allIngredients.push({ name: ing.name.trim(), unit: ing.unit }); }));
+    const productIds = await resolveProductIds(restaurantId, allIngredients);
     try {
       for (const dish of toImport) {
         const payload = {
@@ -195,7 +199,10 @@ export default function MenuPdfImportPanel({ restaurantId, existingDishes, copy,
         }
         const ingRows = dish.ingredients
           .filter((ing) => ing._include && ing.name.trim())
-          .map((ing) => ({ dish_id: dishId, name: ing.name.trim(), qty: Number(ing.qty) || 0, unit: ing.unit || "g" }));
+          .map((ing) => {
+            const name = ing.name.trim();
+            return { dish_id: dishId, name, qty: Number(ing.qty) || 0, unit: ing.unit || "g", product_id: productIds.get(name) || null };
+          });
         if (ingRows.length) {
           const { error: ingErr } = await supabase.from("dish_ingredients").insert(ingRows);
           if (ingErr) throw ingErr;

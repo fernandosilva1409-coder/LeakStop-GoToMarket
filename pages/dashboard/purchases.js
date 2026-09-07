@@ -8,6 +8,7 @@ import { formatMoney } from "../../lib/calculations";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import { downloadCsvTemplate, normalizeCsvDate } from "../../lib/csv";
+import { resolveProductIds } from "../../lib/resolveProducts";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import CsvImportPanel from "../../components/ui/CsvImportPanel";
@@ -96,10 +97,12 @@ export default function PurchasesPage() {
     if (!form.item.trim() || !form.date) { setFormError(t.itemDateRequired); return; }
     setSaving(true);
     setFormError("");
+    const itemName = form.item.trim();
+    const productIds = await resolveProductIds(restaurant.id, [{ name: itemName, unit: form.unit, price: form.unitPrice, source: "purchase" }]);
     const payload = {
-      restaurant_id: restaurant.id, item: form.item.trim(), quantity: Number(form.quantity) || 0,
+      restaurant_id: restaurant.id, item: itemName, quantity: Number(form.quantity) || 0,
       unit: form.unit || "g", unit_price: Number(form.unitPrice) || 0, date: form.date,
-      supplier: form.supplier.trim() || null,
+      supplier: form.supplier.trim() || null, product_id: productIds.get(itemName) || null,
     };
     const query = form.id
       ? supabase.from("purchases").update(payload).eq("id", form.id)
@@ -134,19 +137,27 @@ export default function PurchasesPage() {
   // Expected columns: item, quantity, unit, unit_price, date, supplier — one row per purchase.
   const importCsvRows = async (csvRows, sourceFilename) => {
     const skipped = [];
-    const payload = csvRows
+    const cleanRows = csvRows
       .filter((r) => (r.item || "").trim() && r.date)
       .map((r) => {
         const date = normalizeCsvDate(r.date);
         if (!date) skipped.push(r.item);
         return {
-          restaurant_id: restaurant.id, item: r.item.trim(), quantity: Number(r.quantity) || 0,
+          item: r.item.trim(), quantity: Number(r.quantity) || 0,
           unit: (r.unit || "g").trim(), unit_price: Number(r.unit_price) || 0, date,
           supplier: (r.supplier || "").trim() || null,
-          source_filename: sourceFilename || null,
         };
       })
       .filter((r) => r.date);
+
+    const distinctItems = Array.from(new Map(cleanRows.map((r) => [r.item, r])).values())
+      .map((r) => ({ name: r.item, unit: r.unit, price: r.unit_price, source: "purchase" }));
+    const productIds = await resolveProductIds(restaurant.id, distinctItems);
+
+    const payload = cleanRows.map((r) => ({
+      restaurant_id: restaurant.id, ...r, source_filename: sourceFilename || null,
+      product_id: productIds.get(r.item) || null,
+    }));
 
     setCsvProgress({ current: 0, total: payload.length });
     let inserted = 0;

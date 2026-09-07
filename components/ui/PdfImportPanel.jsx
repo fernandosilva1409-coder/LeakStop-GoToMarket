@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { Upload, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { resolveProductIds } from "../../lib/resolveProducts";
 import Button from "./Button";
 import Input from "./Input";
 
@@ -225,6 +226,12 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, o
   const handleConfirm = async () => {
     setStatus("importing");
     setError("");
+    let productIds = new Map();
+    if (type === "purchase") {
+      const distinctItems = Array.from(new Map(items.map((r) => [r.item, r])).values())
+        .map((r) => ({ name: r.item, unit: r.unit, price: r.unit_price, source: "purchase" }));
+      productIds = await resolveProductIds(restaurantId, distinctItems);
+    }
     const payloads = items.map((row) =>
       type === "purchase"
         ? {
@@ -232,6 +239,7 @@ export default function PdfImportPanel({ type, restaurantId, copy, onImported, o
             unit: row.unit || "un", unit_price: Number(row.unit_price) || 0, date: row.date,
             supplier: row.supplier ? row.supplier.trim() || null : null,
             source_filename: row._sourceFile?.name || null,
+            product_id: productIds.get(row.item) || null,
           }
         : {
             restaurant_id: restaurantId, dish_name: row.dish_name, quantity: Number(row.quantity) || 0, date: row.date,

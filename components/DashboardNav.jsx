@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, CloudSun, LifeBuoy, Settings, LogOut } from "lucide-react";
+import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Boxes, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, CloudSun, LifeBuoy, Settings, LogOut } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getDashCopy } from "../lib/dashboardCopy";
 import pkg from "../package.json";
@@ -28,6 +28,7 @@ export default function DashboardNav({ lang = "pt" }) {
     { href: "/dashboard/analytics", label: t.analytics, icon: BarChart3 },
     { href: "/dashboard/sales", label: t.sales, icon: Receipt },
     { href: "/dashboard/purchases", label: t.purchases, icon: Package },
+    { href: "/dashboard/products", label: t.products, icon: Boxes },
     { href: "/dashboard/menu", label: t.menu, icon: UtensilsCrossed },
     { href: "/dashboard/overhead", label: t.overhead, icon: Calculator },
     { href: "/dashboard/support", label: t.support, icon: LifeBuoy },

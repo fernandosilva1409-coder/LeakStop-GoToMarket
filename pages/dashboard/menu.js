@@ -8,6 +8,7 @@ import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import { downloadCsvTemplate } from "../../lib/csv";
 import { fetchAllRows } from "../../lib/supabaseUtils";
+import { resolveProductIds } from "../../lib/resolveProducts";
 import PageShell from "../../components/ui/PageShell";
 import Card from "../../components/ui/Card";
 import CsvImportPanel from "../../components/ui/CsvImportPanel";
@@ -165,7 +166,14 @@ export default function MenuPage() {
     }
 
     if (ingredients.length) {
-      const rows = ingredients.map((i) => ({ dish_id: dishId, name: i.name.trim(), qty: Number(i.qty) || 0, unit: i.unit || "g" }));
+      const productIds = await resolveProductIds(
+        restaurant.id,
+        ingredients.map((i) => ({ name: i.name.trim(), unit: i.unit }))
+      );
+      const rows = ingredients.map((i) => {
+        const name = i.name.trim();
+        return { dish_id: dishId, name, qty: Number(i.qty) || 0, unit: i.unit || "g", product_id: productIds.get(name) || null };
+      });
       const { error } = await supabase.from("dish_ingredients").insert(rows);
       if (error) { setFormError(error.message); setSaving(false); return; }
     }
@@ -215,6 +223,10 @@ export default function MenuPage() {
     const existingByName = {};
     dishes.forEach((d) => { existingByName[d.name.toLowerCase()] = d; });
 
+    const allIngredients = [];
+    Object.values(byDish).forEach((g) => g.ingredients.forEach((i) => allIngredients.push({ name: i.name, unit: i.unit })));
+    const productIds = await resolveProductIds(restaurant.id, allIngredients);
+
     const dishKeys = Object.keys(byDish);
     setCsvProgress({ current: 0, total: dishKeys.length });
     let imported = 0;
@@ -237,7 +249,7 @@ export default function MenuPage() {
         dishId = data.id;
       }
       if (group.ingredients.length) {
-        const ingRows = group.ingredients.map((i) => ({ dish_id: dishId, name: i.name, qty: i.qty, unit: i.unit }));
+        const ingRows = group.ingredients.map((i) => ({ dish_id: dishId, name: i.name, qty: i.qty, unit: i.unit, product_id: productIds.get(i.name) || null }));
         const { error: ingError } = await supabase.from("dish_ingredients").insert(ingRows);
         if (ingError) { setCsvProgress(null); setCsvStatus(`${dash.common.csvSaveError} ${ingError.message} (${t.importedCount(imported)})`); loadDishes(restaurant.id); return; }
       }

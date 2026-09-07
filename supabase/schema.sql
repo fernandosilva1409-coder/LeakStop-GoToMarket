@@ -36,6 +36,29 @@ create table restaurant_members (
 );
 
 -- ---------------------------------------------------------------------------
+-- Products — the canonical bridge between "how a product is purchased"
+-- (purchases.unit, often a whole priced package like "un"/"cx" with no
+-- per-kg data) and "how a recipe uses it" (dish_ingredients.unit, usually a
+-- natural unit like g/ml). package_qty/package_unit is the one-time
+-- conversion factor that lets those two sides differ freely — see
+-- lib/products.js for how new products get resolved-or-created
+-- (name-matched first, AI-assisted for anything new) from every Purchases/
+-- Menu entry path (manual, CSV, PDF).
+-- ---------------------------------------------------------------------------
+create table products (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references restaurants(id) on delete cascade,
+  name text not null,
+  purchase_unit text not null, -- un | cx | kg | g | l | ml — the unit purchases of this product are normally recorded in
+  package_qty numeric(12, 4), -- null when purchase_unit is already a real weight/volume unit (kg/g/l/ml) — no conversion needed
+  package_unit text, -- g | ml | kg | l | dozen | ... — the unit package_qty is expressed in (e.g. 1 kg bag bought as "un")
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (restaurant_id, name)
+);
+create index idx_products_restaurant on products(restaurant_id);
+
+-- ---------------------------------------------------------------------------
 -- Menu: dishes + their ingredients
 -- ---------------------------------------------------------------------------
 create table dishes (
@@ -58,7 +81,13 @@ create table dish_ingredients (
   -- 0.00015 "un" of a 10L oil drum for a pasta dough) — numeric(10,3)
   -- silently rounded those to 0, zeroing that ingredient's cost everywhere.
   qty numeric(14, 6) not null default 0,
-  unit text not null default 'g' -- g | kg | ml | l | unit | ...
+  unit text not null default 'g', -- g | kg | ml | l | unit | ...
+  -- Nullable and additive: when set, cost calc converts qty/unit through
+  -- the product's own package size instead of requiring qty/unit to
+  -- already share a literal dimension with however the product was
+  -- purchased (see lib/products.js, lib/calculations.js). Null rows fall
+  -- back to the pre-existing name+dimension matching, unchanged.
+  product_id uuid references products(id) on delete set null
 );
 
 -- ---------------------------------------------------------------------------
@@ -74,8 +103,10 @@ create table purchases (
   date date not null,
   supplier text,
   source_filename text, -- name of the PDF this row was extracted from, if any (see pdf_imports)
+  product_id uuid references products(id) on delete set null,
   created_at timestamptz not null default now()
 );
+create index idx_purchases_product on purchases(product_id);
 
 -- ---------------------------------------------------------------------------
 -- Sales (what was actually sold)
@@ -228,6 +259,7 @@ alter table chat_messages enable row level security;
 alter table excluded_categories enable row level security;
 alter table weather_daily enable row level security;
 alter table pdf_imports enable row level security;
+alter table products enable row level security;
 
 -- Helper: is the current user a member of a given restaurant?
 create or replace function is_restaurant_member(target_restaurant_id uuid)
@@ -272,6 +304,15 @@ create policy "members can write purchases" on purchases
 create policy "members can update purchases" on purchases
   for update using (is_restaurant_member(restaurant_id));
 create policy "members can delete purchases" on purchases
+  for delete using (is_restaurant_member(restaurant_id));
+
+create policy "members can read products" on products
+  for select using (is_restaurant_member(restaurant_id));
+create policy "members can write products" on products
+  for insert with check (is_restaurant_member(restaurant_id));
+create policy "members can update products" on products
+  for update using (is_restaurant_member(restaurant_id));
+create policy "members can delete products" on products
   for delete using (is_restaurant_member(restaurant_id));
 
 create policy "members can read sales" on sales
@@ -369,6 +410,10 @@ create trigger sales_mark_analysis_dirty after insert or update or delete on sal
 
 drop trigger if exists purchases_mark_analysis_dirty on purchases;
 create trigger purchases_mark_analysis_dirty after insert or update or delete on purchases
+  for each row execute function trg_mark_analysis_dirty();
+
+drop trigger if exists products_mark_analysis_dirty on products;
+create trigger products_mark_analysis_dirty after insert or update or delete on products
   for each row execute function trg_mark_analysis_dirty();
 
 drop trigger if exists dishes_mark_analysis_dirty on dishes;
