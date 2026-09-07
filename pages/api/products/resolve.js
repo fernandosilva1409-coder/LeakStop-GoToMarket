@@ -1,11 +1,12 @@
 import { requireRestaurantMember } from "../../../lib/apiAuth";
 import { createProductResolver } from "../../../lib/products";
 
-// Resolves a batch of raw item names (purchase line items or recipe
-// ingredient names) to Product ids, creating new products (AI-assisted)
-// where needed — shared by every write path (manual entry, CSV, PDF import)
-// on both Purchases and Menu, so both use the exact same resolution logic
-// and end up pointing at the same Product for the same real-world item.
+// Resolves a batch of raw item names to Product ids. Menu ingredients (no
+// `source`) can create a new product, anchored to a matching purchase, when
+// one doesn't exist yet; purchase line items (`source: "purchase"`) only
+// ever link to a product that already exists — a purchase never spawns one
+// on its own, so items that are never used in a recipe (packaging, cleaning
+// supplies, ...) don't clutter the Products page.
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -17,13 +18,15 @@ export default async function handler(req, res) {
   const { error: authError, supabase } = await requireRestaurantMember(req, restaurantId);
   if (authError) return res.status(403).json({ error: authError });
 
-  const resolve = createProductResolver({ supabase, restaurantId });
+  const resolveMenu = createProductResolver({ supabase, restaurantId, kind: "menu" });
+  const resolvePurchase = createProductResolver({ supabase, restaurantId, kind: "purchase" });
   const products = {};
   for (const it of items) {
     const name = (it?.name || "").trim();
     if (!name || products[name] !== undefined) continue;
     try {
-      products[name] = await resolve(name, it.unit, it.price, it.source === "purchase");
+      const resolve = it.source === "purchase" ? resolvePurchase : resolveMenu;
+      products[name] = await resolve(name);
     } catch (err) {
       console.error("resolve product failed for", name, err);
       products[name] = null;
