@@ -18,6 +18,8 @@ create table restaurants (
   longitude numeric(9, 6),
   weather_proposal text, -- Haiku-written weekly weather proposal (Weather page), cached ~24h
   weather_proposal_at timestamptz,
+  overhead_explanation text, -- Sonnet-written explanation of the overhead-per-plate numbers (Dashboard/Rentabilidade), cached ~24h
+  overhead_explanation_at timestamptz,
   analysis_cache jsonb, -- cached computeAnalysis() output; analysis_cache_at null = stale, see triggers below
   analysis_cache_at timestamptz,
   created_at timestamptz not null default now()

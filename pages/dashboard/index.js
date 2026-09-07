@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Wallet, Trash2, Percent, PieChart, HelpCircle } from "lucide-react";
+import { Wallet, Trash2, Percent, PieChart, HelpCircle, Sparkles } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { formatMoney, catLabel, formatQty, num } from "../../lib/calculations";
 import { useRestaurant } from "../../lib/useRestaurant";
@@ -7,6 +7,7 @@ import { useAnalysis } from "../../lib/useAnalysis";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
 import PageShell from "../../components/ui/PageShell";
+import Card from "../../components/ui/Card";
 import StatCard from "../../components/ui/StatCard";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -30,6 +31,9 @@ export default function Dashboard() {
   const [tab, setTab] = useState("overview");
   const [wasteMetric, setWasteMetric] = useState("cost");
   const [wasteCount, setWasteCount] = useState("5");
+  const [overheadExplanation, setOverheadExplanation] = useState(null);
+  const [overheadExplLoading, setOverheadExplLoading] = useState(false);
+  const [overheadExplError, setOverheadExplError] = useState("");
 
   const browserLang = useDetectedLanguage();
   const lang = restaurant?.language || browserLang;
@@ -71,6 +75,25 @@ export default function Dashboard() {
       setPortalError(t.home.stripeError);
     }
     setOpeningPortal(false);
+  };
+
+  const handleExplainOverhead = async () => {
+    setOverheadExplError("");
+    setOverheadExplLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    try {
+      const res = await fetch("/api/overhead-explanation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ restaurantId: restaurant.id }),
+      });
+      const body = await res.json();
+      if (!res.ok) { setOverheadExplError(body.error || t.home.overheadExplainError); return; }
+      setOverheadExplanation(body.explanation);
+    } catch {
+      setOverheadExplError(t.home.overheadExplainError);
+    }
+    setOverheadExplLoading(false);
   };
 
   if (restaurantLoading) return <p className="p-10 text-muted">{t.common.loading}</p>;
@@ -319,6 +342,25 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
+              <div className="mb-6">
+                <Button variant="secondary" icon={Sparkles} onClick={handleExplainOverhead} disabled={overheadExplLoading}>
+                  {overheadExplLoading ? t.home.overheadExplainLoading : t.home.overheadExplainCta}
+                </Button>
+                {(overheadExplanation || overheadExplError) && (
+                  <Card className="mt-3 border border-brass/20 bg-gradient-to-br from-surface-card to-brass/5">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={15} className="text-brass" />
+                      <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.overheadExplainTitle}</p>
+                    </div>
+                    {overheadExplError ? (
+                      <p className="mt-2 text-sm text-muted">{overheadExplError}</p>
+                    ) : (
+                      <p className="mt-2 text-sm leading-relaxed text-heading">{overheadExplanation}</p>
+                    )}
+                  </Card>
+                )}
+              </div>
+
               <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.dishProfitability}</p>
               <Input placeholder={t.home.searchDishes} value={dishSearch} onChange={(e) => setDishSearch(e.target.value)} className="mb-3 w-full max-w-xs" />
               {analysis.dishRows.length > 0 && (
