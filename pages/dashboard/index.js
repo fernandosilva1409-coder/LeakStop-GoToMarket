@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Wallet, Trash2, Percent, PieChart, HelpCircle, Sparkles } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Wallet, Trash2, Percent, PieChart, HelpCircle, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { formatMoney, catLabel, formatQty, num } from "../../lib/calculations";
 import { useRestaurant } from "../../lib/useRestaurant";
@@ -20,7 +20,11 @@ const RANGES = ["30", "90", "365", "all"];
 export default function Dashboard() {
   const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
   const [range, setRange] = useState("all");
-  const { analysis, loading } = useAnalysis(restaurant, range === "all" ? undefined : Number(range));
+  const { analysis, loading, reload } = useAnalysis(restaurant, range === "all" ? undefined : Number(range));
+  const [expandedDishId, setExpandedDishId] = useState(null);
+  const [editRows, setEditRows] = useState(null); // working copy of the expanded dish's ingredientBreakdown
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState("");
   const [openingPortal, setOpeningPortal] = useState(false);
@@ -105,6 +109,55 @@ export default function Dashboard() {
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurant?.id, !!analysis]);
+
+  const toggleDishDetail = (dish) => {
+    if (expandedDishId === dish.id) {
+      setExpandedDishId(null);
+      setEditRows(null);
+      setEditError("");
+      return;
+    }
+    setExpandedDishId(dish.id);
+    setEditRows((dish.ingredientBreakdown || []).map((ing) => ({ ...ing, _removed: false })));
+    setEditError("");
+  };
+
+  const updateEditRow = (idx, key, value) => {
+    setEditRows((prev) => prev.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
+  };
+  const removeEditRow = (idx) => {
+    setEditRows((prev) => prev.map((r, i) => (i === idx ? { ...r, _removed: true } : r)));
+  };
+
+  const saveDishIngredients = async (dishId) => {
+    setEditSaving(true);
+    setEditError("");
+    try {
+      for (const row of editRows) {
+        if (row._removed) {
+          if (row.id) {
+            const { error } = await supabase.from("dish_ingredients").delete().eq("id", row.id);
+            if (error) throw error;
+          }
+          continue;
+        }
+        const payload = { name: row.name.trim(), qty: Number(row.qty) || 0, unit: row.unit || "g" };
+        if (row.id) {
+          const { error } = await supabase.from("dish_ingredients").update(payload).eq("id", row.id);
+          if (error) throw error;
+        } else if (payload.name) {
+          const { error } = await supabase.from("dish_ingredients").insert({ dish_id: dishId, ...payload });
+          if (error) throw error;
+        }
+      }
+      setExpandedDishId(null);
+      setEditRows(null);
+      await reload();
+    } catch (err) {
+      setEditError(err.message || t.home.saveError);
+    }
+    setEditSaving(false);
+  };
 
   if (restaurantLoading) return <p className="p-10 text-muted">{t.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
@@ -396,6 +449,7 @@ export default function Dashboard() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-surface-border text-left font-mono text-[11px] uppercase tracking-wide text-muted">
+                        <th className="px-2 py-3" />
                         <th className="px-4 py-3">{t.recommendations.colDish}</th>
                         <th className="px-4 py-3">{t.recommendations.colCategory}</th>
                         <th className="px-4 py-3 text-right">{t.recommendations.colSold}</th>
@@ -408,19 +462,75 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredDishes.map((d) => (
-                        <tr key={d.id} className="border-b border-surface-border/60 last:border-0 hover:bg-surface-sunken">
-                          <td className="px-4 py-3 font-medium text-heading">{d.name}</td>
-                          <td className="px-4 py-3 text-muted">{catLabel(d.category)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-muted">{num(d.sold, 0)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.cost, currency)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.overheadPerPlate, currency)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.fullCost, currency)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.price, currency)}</td>
-                          <td className="px-4 py-3 text-right font-mono" style={{ color: d.fullMargin >= 0 ? "#4F7A3D" : "#B5432E" }}>{formatMoney(d.fullMargin, currency)}</td>
-                          <td className="px-4 py-3 text-right font-mono" style={{ color: d.fullMargin >= 0 ? "#4F7A3D" : "#B5432E" }}>{num(d.fullMarginPct, 0)}%</td>
-                        </tr>
-                      ))}
+                      {filteredDishes.map((d) => {
+                        const isExpanded = expandedDishId === d.id;
+                        return (
+                          <Fragment key={d.id}>
+                            <tr
+                              onClick={() => toggleDishDetail(d)}
+                              className="cursor-pointer border-b border-surface-border/60 last:border-0 hover:bg-surface-sunken"
+                            >
+                              <td className="px-2 py-3 text-muted">{isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</td>
+                              <td className="px-4 py-3 font-medium text-heading">{d.name}</td>
+                              <td className="px-4 py-3 text-muted">{catLabel(d.category)}</td>
+                              <td className="px-4 py-3 text-right font-mono text-muted">{num(d.sold, 0)}</td>
+                              <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.cost, currency)}</td>
+                              <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.overheadPerPlate, currency)}</td>
+                              <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.fullCost, currency)}</td>
+                              <td className="px-4 py-3 text-right font-mono text-muted">{formatMoney(d.price, currency)}</td>
+                              <td className="px-4 py-3 text-right font-mono" style={{ color: d.fullMargin >= 0 ? "#4F7A3D" : "#B5432E" }}>{formatMoney(d.fullMargin, currency)}</td>
+                              <td className="px-4 py-3 text-right font-mono" style={{ color: d.fullMargin >= 0 ? "#4F7A3D" : "#B5432E" }}>{num(d.fullMarginPct, 0)}%</td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="border-b border-surface-border/60 bg-surface-sunken/60">
+                                <td colSpan={10} className="px-4 py-4">
+                                  <p className="mb-2 font-mono text-[11px] uppercase tracking-wide text-brass">{t.home.costBreakdownTitle}</p>
+                                  {editRows.length === 0 ? (
+                                    <p className="text-sm text-muted">{t.home.noIngredientsYet}</p>
+                                  ) : (
+                                    <div className="space-y-1.5">
+                                      {editRows.map((row, idx) => !row._removed && (
+                                        <div key={row.id || idx} className="flex flex-wrap items-center gap-2">
+                                          <span
+                                            className={`w-28 shrink-0 rounded px-1.5 py-0.5 text-center font-mono text-[9px] uppercase tracking-wide ${
+                                              row.status === "matched" ? "bg-good/10 text-good"
+                                                : row.status === "dimension_mismatch" ? "bg-warn-bg text-warn-text"
+                                                : "bg-danger-bg text-danger-text"
+                                            }`}
+                                          >
+                                            {t.home.costStatusLabel[row.status] || row.status}
+                                          </span>
+                                          <Input value={row.name} onChange={(e) => updateEditRow(idx, "name", e.target.value)} className="min-w-[160px] flex-[2] text-xs" />
+                                          <Input type="number" step="0.000001" value={row.qty} onChange={(e) => updateEditRow(idx, "qty", e.target.value)} className="w-24 text-xs" />
+                                          <Input value={row.unit} onChange={(e) => updateEditRow(idx, "unit", e.target.value)} className="w-16 text-xs" />
+                                          <span className="w-24 shrink-0 text-right font-mono text-xs text-muted">
+                                            {row.unitCost != null ? formatMoney(row.unitCost, currency) : "—"}
+                                          </span>
+                                          <span className="w-24 shrink-0 text-right font-mono text-xs text-heading">
+                                            {formatMoney(row.contribution, currency)}
+                                          </span>
+                                          <button type="button" onClick={() => removeEditRow(idx)} className="rounded p-1 text-danger-text hover:bg-danger-bg">
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {editError && <p className="mt-2 text-sm text-danger-text">{editError}</p>}
+                                  <div className="mt-3 flex gap-2">
+                                    <Button type="button" onClick={() => saveDishIngredients(d.id)} disabled={editSaving}>
+                                      {editSaving ? t.common.saving : t.home.saveIngredients}
+                                    </Button>
+                                    <Button type="button" variant="secondary" onClick={() => toggleDishDetail(d)} disabled={editSaving}>
+                                      {t.common.cancel}
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
