@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Wallet, Trash2, Percent, PieChart, HelpCircle, Sparkles } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { formatMoney, catLabel, formatQty, num } from "../../lib/calculations";
@@ -77,24 +77,34 @@ export default function Dashboard() {
     setOpeningPortal(false);
   };
 
-  const handleExplainOverhead = async () => {
-    setOverheadExplError("");
-    setOverheadExplLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    try {
-      const res = await fetch("/api/overhead-explanation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ restaurantId: restaurant.id }),
-      });
-      const body = await res.json();
-      if (!res.ok) { setOverheadExplError(body.error || t.home.overheadExplainError); return; }
-      setOverheadExplanation(body.explanation);
-    } catch {
-      setOverheadExplError(t.home.overheadExplainError);
-    }
-    setOverheadExplLoading(false);
-  };
+  // Auto-generates as soon as the dashboard has data — cached ~24h server
+  // side (see /api/overhead-explanation), so opening the page again the
+  // same day just re-reads the cached row instead of re-asking Claude.
+  useEffect(() => {
+    if (!restaurant || !analysis) return;
+    let active = true;
+    (async () => {
+      setOverheadExplError("");
+      setOverheadExplLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch("/api/overhead-explanation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ restaurantId: restaurant.id }),
+        });
+        const body = await res.json();
+        if (!active) return;
+        if (!res.ok) { setOverheadExplError(body.error || t.home.overheadExplainError); return; }
+        setOverheadExplanation(body.explanation);
+      } catch {
+        if (active) setOverheadExplError(t.home.overheadExplainError);
+      }
+      if (active) setOverheadExplLoading(false);
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant?.id, !!analysis]);
 
   if (restaurantLoading) return <p className="p-10 text-muted">{t.common.loading}</p>;
   if (restaurantError) return <p className="p-10 text-danger-text">{restaurantError}</p>;
@@ -342,24 +352,21 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
-              <div className="mb-6">
-                <Button variant="secondary" icon={Sparkles} onClick={handleExplainOverhead} disabled={overheadExplLoading}>
-                  {overheadExplLoading ? t.home.overheadExplainLoading : t.home.overheadExplainCta}
-                </Button>
-                {(overheadExplanation || overheadExplError) && (
-                  <Card className="mt-3 border border-brass/20 bg-gradient-to-br from-surface-card to-brass/5">
-                    <div className="flex items-center gap-2">
-                      <Sparkles size={15} className="text-brass" />
-                      <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.overheadExplainTitle}</p>
-                    </div>
-                    {overheadExplError ? (
-                      <p className="mt-2 text-sm text-muted">{overheadExplError}</p>
-                    ) : (
-                      <p className="mt-2 text-sm leading-relaxed text-heading">{overheadExplanation}</p>
-                    )}
-                  </Card>
-                )}
-              </div>
+              {(overheadExplLoading || overheadExplanation || overheadExplError) && (
+                <Card className="mb-6 border border-brass/20 bg-gradient-to-br from-surface-card to-brass/5">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-brass" />
+                    <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.overheadExplainTitle}</p>
+                  </div>
+                  {overheadExplLoading ? (
+                    <p className="mt-2 text-sm text-muted">{t.home.overheadExplainLoading}</p>
+                  ) : overheadExplError ? (
+                    <p className="mt-2 text-sm text-muted">{overheadExplError}</p>
+                  ) : (
+                    <p className="mt-2 text-sm leading-relaxed text-heading">{overheadExplanation}</p>
+                  )}
+                </Card>
+              )}
 
               <p className="mb-2 font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.home.dishProfitability}</p>
               <Input placeholder={t.home.searchDishes} value={dishSearch} onChange={(e) => setDishSearch(e.target.value)} className="mb-3 w-full max-w-xs" />
