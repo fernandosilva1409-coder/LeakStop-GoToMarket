@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun, FileText, Package } from "lucide-react";
+import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun, FileText, Package, ArrowRightLeft, TrendingUp } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 import StatCard from "../components/ui/StatCard";
 
 export default function Home() {
   const router = useRouter();
   const [lang, setLang] = useState("pt");
+  const [billing, setBilling] = useState("monthly");
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -36,6 +37,17 @@ export default function Home() {
     { title: t.how_step1_title, desc: t.how_step1_desc },
     { title: t.how_step2_title, desc: t.how_step2_desc },
     { title: t.how_step3_title, desc: t.how_step3_desc },
+  ];
+
+  const FEATURES = [
+    { icon: ChefHat, title: t.tour1_title, tag: t.feat1_tag },
+    { icon: ArrowRightLeft, title: t.tour2_title, tag: t.feat2_tag },
+    { icon: Wallet, title: t.tour3_title, tag: t.feat3_tag },
+    { icon: TrendingUp, title: t.tour4_title, tag: t.feat4_tag },
+    { icon: MessageCircle, title: t.tour5_title, tag: t.feat5_tag },
+    { icon: CloudSun, title: t.tour6_title, tag: t.feat6_tag },
+    { icon: FileText, title: t.tour7_title, tag: t.feat7_tag },
+    { icon: Package, title: t.tour8_title, tag: t.feat8_tag },
   ];
 
   return (
@@ -120,6 +132,23 @@ export default function Home() {
       </section>
       </div>
 
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <p className="text-center font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.features_grid_eyebrow}</p>
+        <h2 className="mt-2 text-center text-2xl font-bold text-heading sm:text-3xl">{t.features_grid_title}</h2>
+        <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-muted">{t.features_grid_subtitle}</p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map(({ icon: Icon, title, tag }) => (
+            <div key={title} className="rounded-2xl bg-surface-card p-5 shadow-soft transition-shadow hover:shadow-soft-md">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brass-light to-brass text-heading">
+                <Icon size={17} strokeWidth={2.2} />
+              </div>
+              <h3 className="mt-3.5 text-sm font-semibold text-heading">{title}</h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{tag}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="bg-heading py-16">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mx-auto flex max-w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5">
@@ -183,11 +212,33 @@ export default function Home() {
 
       <section className="mx-auto max-w-md px-6 py-16 text-center">
         <h2 className="text-2xl font-bold text-heading">{t.pricing_title}</h2>
+        <div className="mx-auto mt-6 flex max-w-fit gap-1 rounded-xl bg-surface-card p-1 shadow-soft">
+          <button
+            onClick={() => setBilling("monthly")}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+              billing === "monthly" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "text-muted hover:text-heading"
+            }`}
+          >
+            {t.pricing_toggle_monthly}
+          </button>
+          <button
+            onClick={() => setBilling("annual")}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+              billing === "annual" ? "bg-gradient-to-br from-brass-light to-brass text-heading" : "text-muted hover:text-heading"
+            }`}
+          >
+            {t.pricing_toggle_annual}
+            <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] ${billing === "annual" ? "bg-heading/10 text-heading" : "bg-good/10 text-good"}`}>
+              {t.pricing_annual_badge}
+            </span>
+          </button>
+        </div>
         <div className="mt-6 rounded-2xl bg-surface-card p-8 shadow-soft-md">
           <p className="font-mono text-xs font-semibold uppercase tracking-wide text-brass">{t.pricing_trial}</p>
           <p className="mt-1 font-mono text-4xl font-bold text-heading">
-            49€<span className="text-base font-normal text-muted">{t.pricing_period}</span>
+            {billing === "annual" ? "39,20€" : "49€"}<span className="text-base font-normal text-muted">{t.pricing_period}</span>
           </p>
+          {billing === "annual" && <p className="mt-1 text-xs text-muted">{t.pricing_annual_note}</p>}
           <p className="mt-1 text-sm font-semibold text-brass">{t.pricing_scope}</p>
           <p className="mt-1 text-sm text-muted">{t.pricing_vat}</p>
           <ul className="mt-6 space-y-2 text-left text-sm text-muted">
@@ -199,7 +250,7 @@ export default function Home() {
             ))}
           </ul>
           <Link
-            href={`/signup?lang=${lang}`}
+            href={`/signup?lang=${lang}&plan=${billing}`}
             className="mt-8 block w-full rounded-xl bg-gradient-to-br from-brass-light to-brass px-6 py-3 text-center font-semibold text-heading shadow-soft hover:shadow-soft-md"
           >
             {t.pricing_cta}

@@ -4,18 +4,22 @@ import { requireRestaurantMember } from "../../../lib/apiAuth";
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { restaurantId, customerEmail } = req.body;
+  const { restaurantId, customerEmail, plan } = req.body;
   if (!restaurantId) return res.status(400).json({ error: "Missing restaurantId" });
 
   const { error: authError } = await requireRestaurantMember(req, restaurantId);
   if (authError) return res.status(403).json({ error: authError });
+
+  const priceId = plan === "annual"
+    ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_ANNUAL
+    : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
 
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       customer_email: customerEmail,
-      line_items: [{ price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: { trial_period_days: 5 },
       metadata: { restaurantId },
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=success`,

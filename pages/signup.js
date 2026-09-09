@@ -69,7 +69,7 @@ export default function Signup() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authData.session.access_token}` },
-        body: JSON.stringify({ restaurantId, customerEmail: email }),
+        body: JSON.stringify({ restaurantId, customerEmail: email, plan: router.query.plan === "annual" ? "annual" : "monthly" }),
       });
       const body = await res.json();
       if (body.url) { window.location.href = body.url; return; }
