@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun, FileText, Package, ArrowRightLeft, TrendingUp } from "lucide-react";
+import { ChefHat, Check, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun, FileText, Package, ArrowRightLeft, TrendingUp } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 import StatCard from "../components/ui/StatCard";
 
@@ -23,13 +23,13 @@ export default function Home() {
   };
 
   const TOUR = [
-    { title: t.tour1_title, desc: t.tour1_desc, mockup: <MenuMockup t={t} /> },
+    { title: t.tour1_title, desc: t.tour1_desc, mockup: <ScreenshotFrame src={`/screenshots/menu-${lang}.jpg`} alt={t.tour1_title} /> },
     { title: t.tour2_title, desc: t.tour2_desc, mockup: <PurchasesMockup t={t} /> },
     { title: t.tour3_title, desc: t.tour3_desc, mockup: <OverheadMockup t={t} /> },
     { title: t.tour4_title, desc: t.tour4_desc, mockup: <RecommendationsMockup t={t} /> },
     { title: t.tour5_title, desc: t.tour5_desc, mockup: <ChatMockup t={t} /> },
-    { title: t.tour6_title, desc: t.tour6_desc, mockup: <WeatherMockup t={t} /> },
-    { title: t.tour7_title, desc: t.tour7_desc, mockup: <PdfMockup t={t} /> },
+    { title: t.tour6_title, desc: t.tour6_desc, mockup: <ScreenshotFrame src={`/screenshots/weather-${lang}.jpg`} alt={t.tour6_title} /> },
+    { title: t.tour7_title, desc: t.tour7_desc, mockup: <ScreenshotFrame src={`/screenshots/import-${lang}.jpg`} alt={t.tour7_title} /> },
     { title: t.tour8_title, desc: t.tour8_desc, mockup: <ProductsMockup t={t} /> },
   ];
 
@@ -273,28 +273,19 @@ function MockupFrame({ children }) {
   return <div className="rounded-2xl bg-surface-card p-5 shadow-soft">{children}</div>;
 }
 
-function MenuMockup({ t }) {
+function ScreenshotFrame({ src, alt }) {
   return (
-    <MockupFrame>
-      <div className="rounded-xl bg-surface-sunken p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-bold text-heading">{t.mockup_menu_dish}</p>
-            <span className="mt-1 inline-block rounded-full bg-brass/10 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wide text-brass">{t.mockup_menu_category}</span>
-            <p className="mt-1.5 font-mono text-xs text-muted">{t.mockup_menu_meta}</p>
-          </div>
-          <div className="flex shrink-0 gap-1 text-muted">
-            <Pencil size={14} />
-            <Trash2 size={14} />
-          </div>
-        </div>
-        <ul className="mt-3 space-y-0.5 border-t border-surface-border pt-3 font-mono text-[11.5px] text-muted">
-          <li>{t.mockup_menu_ing1}</li>
-          <li>{t.mockup_menu_ing2}</li>
-          <li>{t.mockup_menu_ing3}</li>
-        </ul>
+    <div className="overflow-hidden rounded-2xl bg-surface-card shadow-soft-lg">
+      <div className="flex items-center gap-1.5 border-b border-surface-border bg-surface-sunken px-4 py-2.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-danger-text/40" />
+        <span className="h-2.5 w-2.5 rounded-full bg-brass/40" />
+        <span className="h-2.5 w-2.5 rounded-full bg-good/40" />
       </div>
-    </MockupFrame>
+      <div className="aspect-[4/3] w-full overflow-hidden bg-surface-sunken">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} className="h-full w-full object-cover object-top" loading="lazy" />
+      </div>
+    </div>
   );
 }
 
@@ -375,56 +366,6 @@ function ChatMockup({ t }) {
           {t.mockup_chat_answer}
         </div>
       </div>
-    </MockupFrame>
-  );
-}
-
-function WeatherMockup({ t }) {
-  return (
-    <MockupFrame>
-      <div className="rounded-xl bg-surface-sunken p-3.5">
-        <div className="flex items-center gap-1.5 text-brass">
-          <Sparkles size={13} />
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wide">{t.mockup_weather_title}</span>
-        </div>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted">
-          {t.mockup_weather_desc}
-        </p>
-      </div>
-      <div className="mt-3 flex items-center justify-between rounded-xl bg-surface-sunken p-3.5">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-wide text-muted">{t.mockup_weather_date}</p>
-          <p className="text-sm font-semibold text-heading">{t.mockup_weather_condition}</p>
-        </div>
-        <span className="rounded-full bg-good/10 px-2.5 py-1 font-mono text-xs font-semibold text-good">+18%</span>
-      </div>
-    </MockupFrame>
-  );
-}
-
-function PdfMockup({ t }) {
-  return (
-    <MockupFrame>
-      <div className="flex items-center gap-2.5 rounded-xl bg-surface-sunken p-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brass-light to-brass text-heading">
-          <FileText size={15} strokeWidth={2.2} />
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-heading">{t.mockup_pdf_filename}</p>
-          <p className="font-mono text-[10px] text-muted">{t.mockup_pdf_status}</p>
-        </div>
-      </div>
-      <ul className="mt-3 space-y-1.5 font-mono text-[11px] text-muted">
-        <li className="flex items-center justify-between gap-2 rounded-lg bg-surface-sunken px-2.5 py-1.5">
-          <span className="truncate">{t.mockup_pdf_row1}</span>
-          <Check size={13} className="shrink-0 text-good" />
-        </li>
-        <li className="flex items-center justify-between gap-2 rounded-lg bg-surface-sunken px-2.5 py-1.5">
-          <span className="truncate">{t.mockup_pdf_row2}</span>
-          <Check size={13} className="shrink-0 text-good" />
-        </li>
-      </ul>
-      <p className="mt-3 text-center text-[10.5px] text-muted">{t.mockup_pdf_confidence}</p>
     </MockupFrame>
   );
 }
