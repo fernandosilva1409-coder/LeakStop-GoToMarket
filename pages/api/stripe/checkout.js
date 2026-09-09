@@ -21,6 +21,10 @@ export default async function handler(req, res) {
       customer_email: customerEmail,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: { trial_period_days: 5 },
+      // Lets Stripe collect and validate a business Tax ID (NIF in Portugal,
+      // VAT elsewhere) on the invoice — required for a customer's own
+      // accounting to treat this as a deductible business expense.
+      tax_id_collection: { enabled: true },
       metadata: { restaurantId },
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard?checkout=cancelled`,

@@ -21,6 +21,7 @@ export default function Signup() {
   const [lang, setLang] = useState("pt");
   const [language, setLanguage] = useState("pt");
   const [currency, setCurrency] = useState("EUR");
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -59,6 +60,7 @@ export default function Signup() {
       restaurant_name: restaurantName,
       p_currency: currency,
       p_language: language,
+      p_marketing_consent: marketingConsent,
     });
     if (rpcError) { setError(rpcError.message); setLoading(false); return; }
 
@@ -126,6 +128,15 @@ export default function Signup() {
             </Select>
           </Field>
         </div>
+        <label className="flex items-start gap-2.5 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={marketingConsent}
+            onChange={(e) => setMarketingConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-border text-brass focus:ring-brass"
+          />
+          {t.marketingConsent}
+        </label>
         {error && <p className="text-sm text-danger-text">{error}</p>}
         <Button type="submit" disabled={loading} className="mt-2">
           {loading ? t.openingStripe : t.submit}

@@ -16,6 +16,7 @@ create table restaurants (
   -- checkout — never default to trialing here, or every signup gets a free
   -- account without ever registering a card.
   subscription_status text not null default 'none', -- none | trialing | active | past_due | canceled
+  marketing_consent boolean not null default false, -- opt-in checkbox at signup, separate from the essential service emails
   city text, -- display label for the geocoded location below; weather correlation needs latitude/longitude
   latitude numeric(9, 6),
   longitude numeric(9, 6),
@@ -375,12 +376,12 @@ create policy "members can delete weather" on weather_daily
 -- Convenience: when a new restaurant is created, auto-create its owner
 -- membership and a zeroed overhead row. Called from the signup flow.
 -- ---------------------------------------------------------------------------
-create or replace function create_restaurant_for_user(restaurant_name text, p_currency text, p_language text)
+create or replace function create_restaurant_for_user(restaurant_name text, p_currency text, p_language text, p_marketing_consent boolean default false)
 returns uuid as $$
 declare
   new_id uuid;
 begin
-  insert into restaurants (name, currency, language) values (restaurant_name, p_currency, p_language) returning id into new_id;
+  insert into restaurants (name, currency, language, marketing_consent) values (restaurant_name, p_currency, p_language, p_marketing_consent) returning id into new_id;
   insert into restaurant_members (restaurant_id, user_id, role) values (new_id, auth.uid(), 'owner');
   insert into overhead_settings (restaurant_id) values (new_id);
   return new_id;
