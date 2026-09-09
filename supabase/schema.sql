@@ -12,7 +12,10 @@ create table restaurants (
   language text not null default 'en',
   stripe_customer_id text,
   stripe_subscription_id text,
-  subscription_status text not null default 'trialing', -- trialing | active | past_due | canceled
+  -- "none" until the Stripe webhook marks it trialing/active after a real
+  -- checkout — never default to trialing here, or every signup gets a free
+  -- account without ever registering a card.
+  subscription_status text not null default 'none', -- none | trialing | active | past_due | canceled
   city text, -- display label for the geocoded location below; weather correlation needs latitude/longitude
   latitude numeric(9, 6),
   longitude numeric(9, 6),
