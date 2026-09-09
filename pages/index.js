@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun } from "lucide-react";
+import { ChefHat, Check, Pencil, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun, FileText, Package } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 import StatCard from "../components/ui/StatCard";
 
@@ -28,6 +28,8 @@ export default function Home() {
     { title: t.tour4_title, desc: t.tour4_desc, mockup: <RecommendationsMockup t={t} /> },
     { title: t.tour5_title, desc: t.tour5_desc, mockup: <ChatMockup t={t} /> },
     { title: t.tour6_title, desc: t.tour6_desc, mockup: <WeatherMockup t={t} /> },
+    { title: t.tour7_title, desc: t.tour7_desc, mockup: <PdfMockup t={t} /> },
+    { title: t.tour8_title, desc: t.tour8_desc, mockup: <ProductsMockup t={t} /> },
   ];
 
   const HOW_STEPS = [
@@ -344,6 +346,56 @@ function WeatherMockup({ t }) {
           <p className="text-sm font-semibold text-heading">{t.mockup_weather_condition}</p>
         </div>
         <span className="rounded-full bg-good/10 px-2.5 py-1 font-mono text-xs font-semibold text-good">+18%</span>
+      </div>
+    </MockupFrame>
+  );
+}
+
+function PdfMockup({ t }) {
+  return (
+    <MockupFrame>
+      <div className="flex items-center gap-2.5 rounded-xl bg-surface-sunken p-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brass-light to-brass text-heading">
+          <FileText size={15} strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-heading">{t.mockup_pdf_filename}</p>
+          <p className="font-mono text-[10px] text-muted">{t.mockup_pdf_status}</p>
+        </div>
+      </div>
+      <ul className="mt-3 space-y-1.5 font-mono text-[11px] text-muted">
+        <li className="flex items-center justify-between gap-2 rounded-lg bg-surface-sunken px-2.5 py-1.5">
+          <span className="truncate">{t.mockup_pdf_row1}</span>
+          <Check size={13} className="shrink-0 text-good" />
+        </li>
+        <li className="flex items-center justify-between gap-2 rounded-lg bg-surface-sunken px-2.5 py-1.5">
+          <span className="truncate">{t.mockup_pdf_row2}</span>
+          <Check size={13} className="shrink-0 text-good" />
+        </li>
+      </ul>
+      <p className="mt-3 text-center text-[10.5px] text-muted">{t.mockup_pdf_confidence}</p>
+    </MockupFrame>
+  );
+}
+
+function ProductsMockup({ t }) {
+  return (
+    <MockupFrame>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-bold text-heading">{t.mockup_products_name}</p>
+          <p className="mt-1 font-mono text-xs text-muted">{t.mockup_products_package}</p>
+        </div>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brass-light to-brass text-heading">
+          <Package size={15} strokeWidth={2.2} />
+        </div>
+      </div>
+      <div className="mt-3 rounded-xl bg-surface-sunken px-3 py-2 font-mono text-xs text-muted">
+        {t.mockup_products_recipe}
+      </div>
+      <div className="mt-3 flex items-center justify-between border-t border-surface-border pt-2.5">
+        <span className="font-mono text-sm font-bold text-brass">{t.mockup_products_avg}</span>
+        <span className="font-mono text-[10.5px] text-muted">{t.mockup_products_range}</span>
       </div>
     </MockupFrame>
   );
