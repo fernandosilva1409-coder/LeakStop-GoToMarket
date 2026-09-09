@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChefHat, Check, Trash2, Wallet, Percent, Sparkles, MessageCircle, CloudSun, FileText, Package, ArrowRightLeft, TrendingUp } from "lucide-react";
 import { COPY, LANGUAGES, detectLanguage } from "../lib/landingCopy";
 import StatCard from "../components/ui/StatCard";
+import Logo from "../components/ui/Logo";
 
 export default function Home() {
   const router = useRouter();
@@ -58,11 +59,9 @@ export default function Home() {
           className="pointer-events-none absolute -top-32 left-1/2 h-[520px] w-[920px] -translate-x-1/2 rounded-full bg-gradient-to-br from-brass-light/30 to-brass/20 blur-3xl"
         />
       <header className="relative mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-6">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-brass-light to-brass text-heading shadow-soft">
-            <ChefHat size={18} strokeWidth={2.2} />
-          </div>
-          <span className="text-lg font-bold text-heading">LeakStop</span>
+        <div className="flex items-center gap-3">
+          <Logo size="md" />
+          <span className="text-xl font-bold text-heading">LeakStop</span>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex gap-1 rounded-xl bg-surface-card p-0.5 shadow-soft">

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ChefHat, LayoutDashboard, UtensilsCrossed, Package, Boxes, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, CloudSun, LifeBuoy, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, UtensilsCrossed, Package, Boxes, Receipt, Calculator, Lightbulb, MessageCircle, BarChart3, CloudSun, LifeBuoy, Settings, LogOut } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { getDashCopy } from "../lib/dashboardCopy";
+import Logo from "./ui/Logo";
 import pkg from "../package.json";
 
 export default function DashboardNav({ lang = "pt" }) {
@@ -45,9 +46,7 @@ export default function DashboardNav({ lang = "pt" }) {
     // purely responsive, no toggle/collapse state to manage.
     <nav className="sticky top-3 m-3 flex h-[calc(100vh-1.5rem)] w-14 shrink-0 flex-col rounded-2xl bg-sidebar-bg shadow-soft-lg sm:w-56">
       <Link href="/dashboard" className="flex shrink-0 items-center justify-center gap-2.5 border-b border-sidebar-border py-4 sm:justify-start sm:px-5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brass-light to-brass text-heading">
-          <ChefHat size={16} strokeWidth={2.2} />
-        </div>
+        <Logo size="sm" />
         <span className="hidden truncate text-sm font-bold text-white sm:inline">LeakStop</span>
       </Link>
 
