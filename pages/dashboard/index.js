@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import { Wallet, Trash2, Percent, PieChart, HelpCircle, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 import { formatMoney, catLabel, formatQty, num } from "../../lib/calculations";
-import { useRestaurant } from "../../lib/useRestaurant";
+import { useRestaurant, hasActiveAccess } from "../../lib/useRestaurant";
 import { useAnalysis } from "../../lib/useAnalysis";
 import { useDetectedLanguage } from "../../lib/landingCopy";
 import { getDashCopy } from "../../lib/dashboardCopy";
@@ -18,7 +19,8 @@ import SimplePieChart from "../../components/ui/SimplePieChart";
 const RANGES = ["30", "90", "365", "all"];
 
 export default function Dashboard() {
-  const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant();
+  const router = useRouter();
+  const { restaurant, loading: restaurantLoading, error: restaurantError, refetch } = useRestaurant();
   const [range, setRange] = useState("all");
   const { analysis, loading, reload } = useAnalysis(restaurant, range === "all" ? undefined : Number(range));
   const [expandedDishId, setExpandedDishId] = useState(null);
@@ -80,6 +82,23 @@ export default function Dashboard() {
     }
     setOpeningPortal(false);
   };
+
+  // Stripe redirects back here the instant checkout completes, but the
+  // webhook that flips subscription_status to "trialing" can lag a couple
+  // seconds behind — poll briefly instead of showing "not subscribed" right
+  // after someone just paid.
+  useEffect(() => {
+    if (router.query.checkout !== "success" || !restaurant || hasActiveAccess(restaurant)) return;
+    let cancelled = false;
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts += 1;
+      const rest = await refetch();
+      if (cancelled) return;
+      if (hasActiveAccess(rest) || attempts >= 8) clearInterval(interval);
+    }, 2000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [router.query.checkout, restaurant, refetch]);
 
   // Auto-generates as soon as the dashboard has data — cached ~24h server
   // side (see /api/overhead-explanation), so opening the page again the
@@ -168,6 +187,12 @@ export default function Dashboard() {
   // instead of "subscribe", not the specific status string.
   const hasSubscription = !!restaurant?.stripe_subscription_id;
   const statusLabel = t.home.subscriptionStatusLabels[restaurant?.subscription_status] || restaurant?.subscription_status;
+  // The actual paywall: only trialing/active accounts see real data below —
+  // everyone else (never checked out, canceled, payment failed) gets the
+  // subscribe prompt and nothing else. See lib/useRestaurant.js for the
+  // matching redirect that keeps other /dashboard/* pages out of reach too.
+  const isActiveSubscriber = hasActiveAccess(restaurant);
+  const checkoutPending = router.query.checkout === "success" && !isActiveSubscriber;
 
   let topWaste = [], unmatchedSalesPct = 0, dishCategories = [], categoryRevenue = [];
   if (analysis) {
@@ -224,7 +249,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {loading || !analysis ? (
+      {checkoutPending ? (
+        <p className="mt-8 text-sm text-muted">{t.home.confirmingSubscription}</p>
+      ) : !isActiveSubscriber ? (
+        <p className="mt-8 text-sm text-muted">{t.home.subscribeToUnlock}</p>
+      ) : loading || !analysis ? (
         <p className="mt-8 text-sm text-muted">{t.home.loadingData}</p>
       ) : (
         <>
