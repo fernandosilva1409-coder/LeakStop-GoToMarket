@@ -1,0 +1,52 @@
+# Kong declarative config — the single gateway in front of GoTrue and PostgREST.
+# The app's NEXT_PUBLIC_SUPABASE_URL points here. Mirrors Supabase's own
+# self-hosted gateway, trimmed to the two services LeakStop uses.
+_format_version: "2.1"
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: ${ANON_KEY}
+  - username: service_role
+    keyauth_credentials:
+      - key: ${SERVICE_ROLE_KEY}
+
+acls:
+  - consumer: anon
+    group: anon
+  - consumer: service_role
+    group: admin
+
+services:
+  # ── GoTrue (auth) ──────────────────────────────────────────────────────────
+  - name: auth-v1
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-route
+        strip_path: true
+        paths:
+          - /auth/v1/
+    plugins:
+      - name: cors
+
+  # ── PostgREST (data API, RLS-enforced) ──────────────────────────────────────
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-route
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+          key_names:
+            - apikey
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon

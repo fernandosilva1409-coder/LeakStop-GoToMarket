@@ -1,0 +1,126 @@
+# Self-hosted Supabase — minimal stack for LeakStop.
+#
+# LeakStop only uses Supabase Auth (GoTrue) and the data API (PostgREST) with
+# Row Level Security. It does NOT use Storage, Realtime, Edge Functions, or
+# Studio, so those services are intentionally omitted — fewer moving parts to
+# operate on Fly.
+#
+# The single public entrypoint is Kong (the `kong` service). The app's
+# NEXT_PUBLIC_SUPABASE_URL points at Kong, which routes:
+#   /auth/v1/*  -> GoTrue (auth)
+#   /rest/v1/*  -> PostgREST (data, RLS-enforced)
+#
+# All values come from the .env file (see .env.example). Generate the secrets
+# with the commands in DEPLOY_SUPABASE_FLY.md before bringing this up.
+#
+# This compose file is the canonical definition of the backend and runs on any
+# Docker host. DEPLOY_SUPABASE_FLY.md explains how to run it on Fly.io.
+
+name: leakstop-supabase
+
+services:
+  db:
+    image: supabase/postgres:15.8.1.060
+    restart: unless-stopped
+    # supabase/postgres ships the roles (anon, authenticated, service_role,
+    # supabase_admin, authenticator), the `auth` schema expected by GoTrue,
+    # and the extensions (pgcrypto, pgjwt, uuid-ossp) that RLS and auth rely on.
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Applied once, in filename order, on first init of an empty data volume.
+      # 99-leakstop-schema.sql is the app's own schema (tables + the 75 RLS
+      # policies) — see DEPLOY_SUPABASE_FLY.md for how it gets here.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      # Exposed only so you can run pg_dump/pg_restore during migration.
+      # On Fly this stays on the private network; do not expose it publicly.
+      - "5432:5432"
+
+  auth:
+    image: supabase/gotrue:v2.177.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
+
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: "false"
+
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+
+      # Email/password is all LeakStop uses.
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: ${MAILER_AUTOCONFIRM:-false}
+
+      # SMTP — required for signup confirmation and password-reset emails.
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-LeakStop}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postgres}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rest
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+    volumes:
+      - ./kong.yml:/home/kong/kong.yml:ro
+    ports:
+      # This is the only service that should be publicly reachable.
+      # On Fly, this is the port the Fly app's http_service points at.
+      - "8000:8000"
+
+volumes:
+  db-data:
