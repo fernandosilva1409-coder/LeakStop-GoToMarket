@@ -1,0 +1,52 @@
+# Fly.io configuration for LeakStop (Next.js 14 + Supabase + Stripe + Anthropic).
+#
+# The database and auth live in Supabase (external) — Fly only runs the
+# Next.js server and its API routes. Set `app` to the name you pick in
+# `fly launch`, and keep the region in the EU (mad = Madrid) so request
+# handling stays close to Portugal/Spain and inside the EU for GDPR.
+#
+# NEXT_PUBLIC_* are build-time (inlined into the client bundle) and are passed
+# as [build.args]; all server-only secrets are set with `fly secrets set`
+# (see DEPLOY_FLY.md) and are NOT listed here.
+
+app = "leakstop"
+primary_region = "mad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+  # Build args mirror the NEXT_PUBLIC_* values. These are NOT secret (they ship
+  # in the browser bundle anyway). Fly reads matching [build.args] from the
+  # values you pass with `--build-arg`, or you can hard-code the non-secret ones
+  # here. The anon key is a public Supabase key, safe to expose.
+  [build.args]
+    NEXT_PUBLIC_SITE_URL = "https://leakstop.fly.dev"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+  # Next.js returns 200 on /api/health (added for this migration).
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
